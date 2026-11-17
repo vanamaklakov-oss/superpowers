@@ -1,0 +1,19 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Top,Inter Display Black,64,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,1,0,1,6,0,8,60,60,300,1
+Style: Big,Inter Display Black,210,&H00FFFFFF,&H00FFFFFF,&H00B9389C,&H80000000,0,0,0,0,100,100,0,0,1,12,0,8,40,40,390,1
+Style: Tag,Inter Display Black,72,&H0000E1FF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,3,0,1,6,0,8,60,60,420,1
+Style: End,Inter Display Black,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,7,0,2,70,70,470,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:03.00,Top,,0,0,0,,ДО ВЫХОДА GTA 6 ОСТАЛОСЬ
+Dialogue: 0,0:00:00.00,0:00:03.00,Big,,0,0,0,,{\fad(0,200)\fscx60\fscy60\t(0,250,\fscx105\fscy105)\t(250,400,\fscx100\fscy100)}2 ДНЯ
+Dialogue: 0,0:00:03.00,0:00:19.42,Tag,,0,0,0,,{\fad(200,0)}19 НОЯБРЯ
+Dialogue: 0,0:00:19.42,0:00:22.22,Tag,,0,0,0,,19 НОЯБРЯ
+Dialogue: 0,0:00:19.42,0:00:22.22,End,,0,0,0,,{\fad(200,0)}А ТЫ БУДЕШЬ ИГРАТЬ\N{\c&H0000E1FF&}В ПЕРВЫЙ ДЕНЬ?

@@ -1,0 +1,32 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Sub,Inter Display Black,68,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,6,2,2,70,70,500,1
+Style: Hook,Inter Display Black,96,&H00FFFFFF,&H00FFFFFF,&H005B18C2,&H80000000,0,0,0,0,100,100,0,0,1,9,0,8,60,60,330,1
+Style: Tag,Inter Display Black,64,&H0000E1FF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,2,0,1,6,0,8,60,60,420,1
+Style: Small,Inter SemiBold,34,&H00DDDDDD,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,3,0,2,60,60,120,1
+Style: End,Inter Display Black,90,&H0000E1FF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,8,0,2,60,60,420,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:03.80,Hook,,0,0,0,,{\fad(0,250)\t(0,200,\fscx110\fscy110)\t(200,400,\fscx100\fscy100)}ЕСЛИ БЫ GTA 6\NБЫЛА ПРО РОССИЮ
+Dialogue: 0,0:00:03.80,0:00:26.00,Tag,,0,0,0,,{\fad(250,0)}GTA 6: РОССИЯ
+Dialogue: 0,0:00:00.00,0:00:26.00,Small,,0,0,0,,видео создано нейросетью
+Dialogue: 0,0:00:00.70,0:00:01.95,Sub,,0,0,0,,Классная музыка, да?
+Dialogue: 0,0:00:02.15,0:00:03.60,Sub,,0,0,0,,Ага, вообще огонь!
+Dialogue: 0,0:00:04.00,0:00:05.85,Sub,,0,0,0,,О, смотри, какая {\c&H0000E1FF&}девчонка!
+Dialogue: 0,0:00:05.90,0:00:07.10,Sub,,0,0,0,,Где? А, вижу.
+Dialogue: 0,0:00:07.40,0:00:09.00,Sub,,0,0,0,,Давай, тормозни,\Nя подойду.
+Dialogue: 0,0:00:09.40,0:00:10.95,Sub,,0,0,0,,{\c&H004040FF&\fscx115\fscy115}ОЙ, МЕНТЫ!\NСВАЛИВАЕМ!
+Dialogue: 0,0:00:11.00,0:00:12.40,Sub,,0,0,0,,Быстрее, садись!
+Dialogue: 0,0:00:14.45,0:00:16.00,Sub,,0,0,0,,А ты всегда\Nтакой весёлый,
+Dialogue: 0,0:00:16.00,0:00:17.65,Sub,,0,0,0,,или только когда\Nот {\c&H004040FF&}полиции{\c&HFFFFFF&} убегаешь?
+Dialogue: 0,0:00:17.75,0:00:19.75,Sub,,0,0,0,,Это ты ещё не видела,\Nкак я умею знакомиться!
+Dialogue: 0,0:00:23.00,0:00:24.90,Sub,,0,0,0,,Знаешь, я рад,\Nчто сегодня тебя встретил.
+Dialogue: 0,0:00:25.00,0:00:25.70,Sub,,0,0,0,,Я тоже.
+Dialogue: 0,0:00:24.90,0:00:26.00,End,,0,0,0,,{\fad(200,0)}ЧАСТЬ 2?

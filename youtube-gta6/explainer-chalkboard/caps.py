@@ -1,6 +1,6 @@
 import json,re
 ST={1:0.3,2:5.1,3:9.4,4:15.6,5:21.75,6:26.75,7:32.25,8:35.75}
-KEY={'gta','6','november','19th','thirteen','years','5','2013','delayed','twice','2025','2026','lucia','jason','leonida','florida','vice','city','ps5','xbox','pc','ninety-three','million','record','twenty-four','hours','day','one','yet'}
+KEY={'gta','6','pc','ps5','eight','zen','2','3.5','gigahertz','ryzen','3700x','10.3','teraflops','rx','6700','rtx','2070','super','3060','16','gigs','ram','ssd','5.5','nvme','minimum','1080p','30','fps','60','4070','32','estimates','specs'}
 lines={int(l.split('|')[0]):l.split('|',1)[1].strip() for l in open('lines.txt',encoding='utf-8')}
 t=lambda x:'%d:%02d:%05.2f'%(x//3600,(x%3600)//60,x%60)
 out=[]
@@ -9,7 +9,7 @@ for n,st in ST.items():
     # align spoken words to the written tokens (keep punctuation)
     words=[]; j=0
     for x in w:
-        while j<len(toks) and re.sub(r'[^\w-]','',toks[j]).lower()!=x['w'].lower().strip('.,!?'): j+=1
+        while j<len(toks) and toks[j].strip('.,!?:;"').lower()!=x['w'].lower().strip('.,!?'): j+=1
         words.append((toks[j] if j<len(toks) else x['w'],x['s'],x['s']+x['d'])); j+=1
     chunks=[];cur=[]
     for wd in words:
@@ -18,7 +18,7 @@ for n,st in ST.items():
     if cur: chunks.append(cur)
     for i,c in enumerate(chunks):
         a=st+c[0][1]; b=st+(chunks[i+1][0][1] if i+1<len(chunks) else c[-1][2]+0.3)
-        txt=' '.join(('{\\c&H0000E1FF&}'+s.upper()+'{\\c&HFFFFFF&}') if re.sub(r'[^\w-]','',s).lower() in KEY else s.upper() for s,_,_ in c)
+        txt=' '.join(('{\\c&H0000E1FF&}'+s.upper()+'{\\c&HFFFFFF&}') if s.strip('.,!?:;"').lower() in KEY else s.upper() for s,_,_ in c)
         out.append(f'Dialogue: 0,{t(a)},{t(b)},Cap,,0,0,0,,{{\\fscx120\\fscy120\\t(0,110,\\fscx100\\fscy100)}}'+txt)
 hdr='''[Script Info]
 ScriptType: v4.00+

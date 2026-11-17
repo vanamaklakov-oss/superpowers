@@ -1,0 +1,8 @@
+1|If GTA 6 comes to PC, what will you need? Look at the PS5. The game was built for it.
+2|The PS5 has eight Zen 2 cores at up to 3.5 gigahertz. On PC, that's about a Ryzen 7 3700X.
+3|Its GPU is 10.3 teraflops. That's roughly an RX 6700 or an RTX 2070 Super. An RTX 3060 is in the same league.
+4|It has 16 gigs of shared memory, so get 16 gigs of RAM.
+5|Its SSD reads 5.5 gigs per second. Hard drives are out. Get an NVMe SSD.
+6|That's your minimum: 1080p at around 30 FPS.
+7|To hit sixty FPS, aim for an RTX 4070 and 32 gigs of RAM.
+8|These are estimates. No PC version is announced yet. Drop your specs below.

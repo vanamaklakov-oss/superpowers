@@ -1,4 +1,6 @@
-"""Build a 'Machiavelli quote' Short like the reference: slow push-in on a dark picture,
+"""Build a 'Machiavelli quote' Short. Default: cut-out figure over backgrounds that switch on each word
+(set MODE=classic for the older two-picture push-in).
+Like the reference: slow push-in on a dark picture,
 one big word at a time in the centre, deep slow voice, dark synthesized drone + low piano.
 Usage: python3 build.py q1 [q2 ...] | all"""
 import json, os, subprocess, sys, wave
@@ -7,6 +9,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageEnhance
 from script import VIDEOS
 
 HERE = os.path.dirname(os.path.abspath(__file__)); IMG = f"{HERE}/../machiavelli/images"
+MODE = os.environ.get("MODE", "cutout")
+BGDIR = f"{HERE}/images/bg"
 W, H, FPS, SR = 1080, 1920, 30, 48000
 FB = ImageFont.truetype("/usr/share/fonts/opentype/inter/InterDisplay-Black.otf", 92)
 FT = ImageFont.truetype("/usr/share/fonts/opentype/inter/Inter-SemiBold.otf", 40)
@@ -45,6 +49,26 @@ def prep(name):
     yy, xx = np.mgrid[0:H, 0:W]; v = 1 - 0.45 * (((xx - W / 2) / (W / 1.2)) ** 2 + ((yy - H / 2) / (H / 1.2)) ** 2)
     return Image.fromarray((np.asarray(im) * v[..., None]).clip(0, 255).astype(np.uint8))
 
+def load_bgs():
+    import glob
+    fs = sorted(glob.glob(f"{BGDIR}/*.jpg") + glob.glob(f"{BGDIR}/*.png"))
+    out = []
+    for p in fs:
+        im = ImageOps.fit(Image.open(p).convert("RGB"), (W, H), Image.LANCZOS)
+        im = ImageEnhance.Brightness(ImageEnhance.Color(im).enhance(0.9)).enhance(0.78)
+        out.append(im)
+    return out
+
+FIG = None
+def figure():
+    global FIG
+    if FIG is None:
+        f = Image.open(f"{HERE}/images/figure.png").convert("RGBA"); bb = f.getbbox(); f = f.crop(bb)
+        h = int(H * 0.74); w = int(f.width * h / f.height); f = f.resize((w, h), Image.LANCZOS)
+        sh = Image.new("RGBA", f.size, (0, 0, 0, 0)); sh.putalpha(f.getchannel("A").filter(ImageFilter.GaussianBlur(25)).point(lambda v: v * 0.7))
+        FIG = (f, sh)
+    return FIG
+
 def build(vid):
     title, images, sents = VIDEOS[vid]; rng = np.random.default_rng(int(vid[1:]))
     words, voice, t = [], [], 0.6
@@ -58,12 +82,31 @@ def build(vid):
     mix = m * (1 - 0.4 * np.clip(env * 12, 0, 1))[:, None] + vo[:, None]; mix /= max(1, np.abs(mix).max() / .95)
     os.makedirs(f"{HERE}/out", exist_ok=True); wav = f"{HERE}/out/{vid}.wav"
     with wave.open(wav, "wb") as w: w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((mix * 32767).astype("<i2").tobytes())
-    imgs = [prep(x) for x in images]; cut = words[len(words) // 2][0]
+    imgs = [prep(x) for x in images] if MODE != "cutout" else []; cut = words[len(words) // 2][0]
+    bgs = load_bgs() if MODE == "cutout" else []; bg_off = int(vid[1:]) * 7
     out = f"{HERE}/out/machiavelli_{vid}.mp4"
     ff = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
                            "-i", wav, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-shortest", out], stdin=subprocess.PIPE)
     for f in range(int(total * FPS)):
         tt = f / FPS; k = 0 if tt < cut else 1
+        if MODE == "cutout":
+            wi = max([j for j, (ws, _) in enumerate(words) if ws <= tt] or [0])
+            bi = (wi + bg_off) % len(bgs); bstart = words[wi][0] if tt >= words[0][0] else 0
+            p = min(1, (tt - bstart) / 0.6); im = frame_base(bgs[bi], p * 0.4, bi)
+            fg, sh = figure(); x = (W - fg.width) // 2; y = H - fg.height
+            im.paste((0, 0, 0), (x - 10, y + 10), sh); im.paste(fg, (x, y), fg)
+            d = ImageDraw.Draw(im); cur = None
+            for j, (ws, w) in enumerate(words):
+                nxt = words[j + 1][0] if j + 1 < len(words) else ws + 0.8
+                if ws <= tt < min(nxt, ws + 0.9): cur = w
+            txt = (cur or "").upper().strip(" ,.:;!?«»—")
+            if txt:
+                d.text((W // 2, int(H * 0.62)), txt, font=FB, anchor="mm", fill=(255, 255, 255), stroke_width=5, stroke_fill=(0, 0, 0))
+            d.text((W // 2, 150), "НИККОЛО МАКИАВЕЛЛИ", font=FT, anchor="mm", fill=(235, 235, 235), stroke_width=3, stroke_fill=(0, 0, 0))
+            d.text((W // 2, 205), title, font=FT, anchor="mm", fill=(220, 40, 40), stroke_width=3, stroke_fill=(0, 0, 0))
+            fade = min(1, tt / 0.4, (total - tt) / 0.8)
+            if fade < 1: im = Image.blend(Image.new("RGB", (W, H)), im, max(0, fade))
+            ff.stdin.write(im.tobytes()); continue
         seg0, seg1 = (0, cut) if k == 0 else (cut, total)
         im = frame_base(imgs[k], (tt - seg0) / (seg1 - seg0), k)
         if abs(tt - cut) < 0.35:   # soft dissolve between the two pictures

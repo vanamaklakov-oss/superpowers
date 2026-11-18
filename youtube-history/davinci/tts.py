@@ -26,7 +26,7 @@ def say(text, out):
 
 def dur(f): return float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f]))
 
-for n, text in SCENES:
+for n, text, *_ in SCENES:
     out = f"{VO}/{n:02d}.mp3"
     if os.path.exists(out + ".json") and json.load(open(out + ".json")).get("text") == text: continue
     parts = [s for s in re.split(r"(?<=[.!?])\s+", text) if s]; files, words, t = [], [], 0.0

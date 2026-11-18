@@ -27,10 +27,11 @@ def trim(a):
     s, e = max(on[0] - 960, 0), min(on[-1] + 2400, len(a)); return a[s:e], s / SR
 
 rows, t = [], 0.35
-for n, _ in SCENES:
+for n, _, kw, k1, k2, yr in SCENES:
     a, lead = trim(pcm(f"{HERE}/vo/{n:02d}.mp3")); meta = json.load(open(f"{HERE}/vo/{n:02d}.mp3.json"))
     words = [{"w": w["w"], "s": t + w["s"] - lead, "e": t + w["s"] - lead + w["d"]} for w in meta["words"]]
-    rows.append({"n": n, "t0": t, "audio": a, "words": words}); t += len(a) / SR + GAP
+    kt = next((w["s"] for w in words if w["w"].lower().strip(".,?!:").startswith(kw)), t + 0.5)
+    rows.append({"n": n, "t0": t, "audio": a, "words": words, "kt": kt, "k1": k1, "k2": k2, "yr": yr}); t += len(a) / SR + GAP
 TOTAL = t + 0.9
 for i, r in enumerate(rows): r["t1"] = rows[i + 1]["t0"] if i + 1 < len(rows) else TOTAL
 title_t = next(w["s"] for w in rows[0]["words"] if w["w"].strip(".,").lower() == TITLE_WORD.lower())
@@ -99,13 +100,24 @@ def kenburns(im, p, k):
     cw, ch = W / z, H / z; x0 = (W - cw) * dx; y0 = (H - ch) * dy
     return im.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
 
+PX = 4   # pixel-font block size at 1080 wide
+def ptext(im, cx, cy, lines, size):
+    """Draw lines [(text, rgb)] as chunky pixel text centred at (cx, cy); size = cap height in output px."""
+    k = max(2, round(PX * W / 1080)); f = ImageFont.truetype(FONT, max(6, int(size / k)))
+    small = [(f.getbbox(t), t, c) for t, c in lines]; lw = max(b[2] - b[0] for b, _, _ in small) + 4; lh = int(size / k * 1.15)
+    lay = Image.new("RGBA", (lw + 4, lh * len(lines) + 4), (0, 0, 0, 0)); d = ImageDraw.Draw(lay)
+    for j, (b, t, c) in enumerate(small):
+        d.text(((lw + 4) // 2, 2 + lh * j + lh // 2), t, font=f, anchor="mm", fill=c + (255,), stroke_width=1, stroke_fill=(15, 10, 10, 255))
+    lay = lay.resize((lay.width * k, lay.height * k), Image.NEAREST)
+    if lay.width > W * 0.94: r = W * 0.94 / lay.width; lay = lay.resize((int(lay.width * r), int(lay.height * r)), Image.NEAREST)
+    im.paste(lay, (int(cx - lay.width / 2), int(cy - lay.height / 2)), lay); return im
+
 def title_card(base):
-    g = ImageOps.grayscale(base).convert("RGB"); g = Image.blend(g, Image.new("RGB", (W, H), (10, 10, 10)), 0.35)
-    d = ImageDraw.Draw(g); f1 = ImageFont.truetype(FONT, int(W * 0.13)); f2 = ImageFont.truetype(FONT, int(W * 0.09))
-    sw = max(2, W // 180)
-    d.text((W // 2, int(H * 0.42)), "ИСТОРИЯ", font=f1, anchor="mm", fill="white", stroke_width=sw, stroke_fill="black")
-    d.text((W // 2, int(H * 0.42) + int(W * 0.13)), "ЗА МИНУТУ", font=f2, anchor="mm", fill=(200, 30, 30), stroke_width=sw, stroke_fill="black")
-    return g
+    m = f"{HERE}/images/mascot.png"
+    if not os.path.exists(m): m = m.replace(".png", ".jpg")
+    if os.path.exists(m): g = ImageOps.fit(Image.open(m).convert("RGB"), (W, H), Image.LANCZOS)
+    else: g = Image.blend(ImageOps.grayscale(base).convert("RGB"), Image.new("RGB", (W, H), (10, 10, 10)), 0.35)
+    return ptext(g, W / 2, H * 0.36, [("ИСТОРИЯ", (255, 255, 255)), ("ЗА МИНУТУ", (220, 30, 30))], W * 0.12)
 
 def torn(a, b, p, seed):
     """b tears in from the left over a; ragged paper edge between them."""
@@ -136,12 +148,25 @@ def word_at(t):
             if w["s"] <= t < max(w["e"], w["s"] + 0.12): return w["w"]
     return None
 
-FW = ImageFont.truetype(FONT, int(W * 0.075))
-def caption(im, w):
-    if not w: return im
-    d = ImageDraw.Draw(im); w = w.upper().strip()
-    d.text((W // 2, int(H * 0.70)), w, font=FW, anchor="mm", fill="white", stroke_width=max(3, W // 120), stroke_fill=(20, 15, 10))
+FS = ImageFont.truetype("/usr/share/fonts/opentype/inter/Inter-SemiBold.otf", int(W * 0.042))
+def caption(im, t, r):
+    # small running line at the top: the 3-word chunk holding the current word
+    ws = r["words"]
+    cur = next((k for k, w in enumerate(ws) if w["s"] <= t < (ws[k + 1]["s"] if k + 1 < len(ws) else w["e"] + 0.3)), None)
+    if cur is not None and t < ws[cur]["e"] + 0.6:
+        c0 = cur - cur % 3; txt = " ".join(w["w"] for w in ws[c0:c0 + 3])
+        ImageDraw.Draw(im).text((W // 2, int(H * 0.065)), txt, font=FS, anchor="mm", fill=(245, 245, 245), stroke_width=max(2, W // 360), stroke_fill=(10, 10, 10))
+    if r["yr"] and t < r["t0"] + 2.2: ptext(im, W / 2, H * 0.16, [(r["yr"], (205, 205, 205))], W * 0.2)
+    if t >= r["kt"] and t < r["t1"] - 0.05:
+        lines = [(r["k1"], (255, 255, 255))] + ([(r["k2"], (225, 35, 35))] if r["k2"] else [])
+        ptext(im, W / 2, H * 0.6, lines, W * 0.075)
     return im
+
+def spin(im, s):   # rotational whip blur, s 0..1
+    if s <= 0.02: return im
+    acc = np.zeros((H, W, 3), np.float32); n = 6
+    for j in range(n): acc += np.asarray(im.rotate(s * 28 * (j / (n - 1) - 0.3), resample=Image.BILINEAR, expand=False).resize((W, H)), np.float32)
+    out = Image.fromarray((acc / n).astype(np.uint8)); return out.filter(ImageFilter.GaussianBlur(W / 200 * s))
 
 def grade(im):   # warm, slightly crunchy pixel look + vignette
     a = np.asarray(im).astype(np.float32); yy, xx = np.mgrid[0:H, 0:W]
@@ -177,12 +202,12 @@ def main():
             im = torn(scene_frame(i - 1, rows[i]["t0"] - 0.01), im, (t - rows[i]["t0"]) / TR, 3)
         elif i >= 1:
             d = t - rows[i]["t0"]
-            if d < 0.3: im = flash(im, 1 - d / 0.3)
+            if d < 0.3: im = flash(im, 1 - d / 0.3) if i % 2 else spin(im, 1 - d / 0.3)
         if i + 1 < len(rows) and i + 1 not in (1, len(rows) - 1):
             d = rows[i + 1]["t0"] - t
-            if d < 0.18: im = flash(im, 1 - d / 0.18)
+            if d < 0.22: im = flash(im, 1 - d / 0.22) if (i + 1) % 2 else spin(im, 1 - d / 0.22)
         a = (np.asarray(im).astype(np.float32) * VIG).clip(0, 255).astype(np.uint8); im = Image.fromarray(a)
-        if t < TOTAL - 0.6 and not (title_t <= t < rows[1]["t0"]): im = caption(im, word_at(t))
+        if t < TOTAL - 0.6 and not (title_t <= t < rows[1]["t0"]): im = caption(im, t, rows[i])
         fade = min(1, t / 0.25, (TOTAL - t) / 0.5)
         if fade < 1: im = Image.blend(Image.new("RGB", (W, H)), im, max(0, fade))
         ff.stdin.write(im.tobytes())

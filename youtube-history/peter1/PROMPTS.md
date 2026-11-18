@@ -10,7 +10,7 @@
 4. Назовите файлы `00.png … 12.png` и пришлите мне.
 
 **Общий стиль** (добавляйте в конец каждого промпта):
-`detailed 16-bit pixel art, SNES-era RPG cutscene style, rich painterly pixel shading, cinematic lighting, vertical 9:16 composition, no text, no letters, no watermark`
+`detailed 16-bit pixel art, SNES-era RPG cutscene style, rich painterly pixel shading, cinematic lighting, historically accurate late 17th / early 18th century Russia and Europe, realistic period clothing, no fantasy armor, no fantasy castles, vertical 9:16 composition, no text, no letters, no watermark`
 
 **Взрослый Пётр** (вставляйте, где написано [PETER]):
 `[PETER] = a very tall young Russian tsar in his late 20s, long face, dark curly shoulder-length hair, small thin black mustache, intense dark eyes, dark green military coat with red cuffs and gold buttons`

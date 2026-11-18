@@ -182,7 +182,7 @@ def main():
             d = rows[i + 1]["t0"] - t
             if d < 0.18: im = flash(im, 1 - d / 0.18)
         a = (np.asarray(im).astype(np.float32) * VIG).clip(0, 255).astype(np.uint8); im = Image.fromarray(a)
-        if t < TOTAL - 0.6: im = caption(im, word_at(t))
+        if t < TOTAL - 0.6 and not (title_t <= t < rows[1]["t0"]): im = caption(im, word_at(t))
         fade = min(1, t / 0.25, (TOTAL - t) / 0.5)
         if fade < 1: im = Image.blend(Image.new("RGB", (W, H)), im, max(0, fade))
         ff.stdin.write(im.tobytes())

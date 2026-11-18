@@ -49,14 +49,20 @@ def prep(name):
     yy, xx = np.mgrid[0:H, 0:W]; v = 1 - 0.45 * (((xx - W / 2) / (W / 1.2)) ** 2 + ((yy - H / 2) / (H / 1.2)) ** 2)
     return Image.fromarray((np.asarray(im) * v[..., None]).clip(0, 255).astype(np.uint8))
 
+BLUR = float(os.environ.get("BLUR", "5")); STEP = float(os.environ.get("STEP", "0.3"))
+_yy, _xx = np.mgrid[0:H, 0:W]; VIG = (1 - 0.55 * (((_xx - W / 2) / (W / 1.15)) ** 2 + ((_yy - H / 2) / (H / 1.15)) ** 2)).clip(0.25, 1)[..., None]
+
 def load_bgs():
     import glob
     fs = sorted(glob.glob(f"{BGDIR}/*.jpg") + glob.glob(f"{BGDIR}/*.png"))
     out = []
     for p in fs:
         im = ImageOps.fit(Image.open(p).convert("RGB"), (W, H), Image.LANCZOS)
-        im = ImageEnhance.Brightness(ImageEnhance.Color(im).enhance(0.9)).enhance(0.78)
-        out.append(im)
+        g = ImageOps.grayscale(im)                                   # faded sepia, soft blur, dark edges (like the reference)
+        im = ImageOps.colorize(g, (18, 15, 12), (235, 225, 205)).filter(ImageFilter.GaussianBlur(BLUR))
+        im = ImageEnhance.Contrast(im).enhance(0.85); im = ImageEnhance.Brightness(im).enhance(0.72)
+        a = (np.asarray(im).astype(np.float32) * VIG).clip(0, 255).astype(np.uint8)
+        out.append(Image.fromarray(a))
     return out
 
 FIG = None
@@ -84,14 +90,19 @@ def build(vid):
     with wave.open(wav, "wb") as w: w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((mix * 32767).astype("<i2").tobytes())
     imgs = [prep(x) for x in images] if MODE != "cutout" else []; cut = words[len(words) // 2][0]
     bgs = load_bgs() if MODE == "cutout" else []; bg_off = int(vid[1:]) * 7
+    sw = []                                    # background switch times: every word start, plus every STEP s inside long words/pauses
+    for j, (ws, _) in enumerate(words):
+        nxt = words[j + 1][0] if j + 1 < len(words) else total
+        t_ = ws
+        while t_ < nxt - 0.05: sw.append(t_); t_ += STEP
     out = f"{HERE}/out/machiavelli_{vid}.mp4"
     ff = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
                            "-i", wav, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-shortest", out], stdin=subprocess.PIPE)
     for f in range(int(total * FPS)):
         tt = f / FPS; k = 0 if tt < cut else 1
         if MODE == "cutout":
-            wi = max([j for j, (ws, _) in enumerate(words) if ws <= tt] or [0])
-            bi = (wi + bg_off) % len(bgs); bstart = words[wi][0] if tt >= words[0][0] else 0
+            si = max([j for j, st in enumerate(sw) if st <= tt] or [0])
+            bi = (si + bg_off) % len(bgs); bstart = sw[si] if tt >= sw[0] else 0
             p = min(1, (tt - bstart) / 0.6); im = frame_base(bgs[bi], p * 0.4, bi)
             fg, sh = figure(); x = (W - fg.width) // 2; y = H - fg.height
             im.paste((0, 0, 0), (x - 10, y + 10), sh); im.paste(fg, (x, y), fg)

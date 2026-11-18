@@ -116,3 +116,35 @@ VIDEOS = {
     dict(t="head", text="А ЧТО ТЫ ПОЛУЧИЛ", cue=0, size=92), dict(t="head", text="РАНЬШЕ GTA 6?", cue="раньше", size=120, color=YEL), dict(t="arrow", cue="Пиши")]),
 ]),
 }
+
+VIDEOS["fps30"] = dict(title="Почему GTA 6 только в 30 FPS", fx=dict(rays=True, bursts=True, doodles=16),
+  pal=dict(bg=["#ff2e7e", "#6a2cff"], blobs=["#ffd84d", "#00e5ff", "#ff8a00", "#a6ff00", "#ff4fd8", "#3dffb0"], accent=[YEL, "#00e5ff", LIME, ORANGE, PINK]), scenes=[
+  dict(say="GTA 6 на консолях будет в тридцати кадрах. Даже на PS5 Pro! Почему так? Разбираемся.", rate="+6%", items=[
+    dict(t="head", text="ПОЧЕМУ GTA 6", cue=0, size=118), dict(t="head", text="ТОЛЬКО В", cue="тридцати", size=118, color=YEL),
+    dict(t="big", text="30 FPS", count=30, suffix=" FPS", cue="тридцати", color="#ff2e7e"), dict(t="pills", pills=[dict(text="ДАЖЕ НА PS5 PRO", cue="Даже", color="#00e5ff")])]),
+  dict(say="Десятого ноября Рокстар сама это подтвердила: цель — тридцать кадров на PS5, PS5 Pro и Xbox Series.", rate="+6%", items=[
+    dict(t="pills", pills=[dict(text="10 НОЯБРЯ", cue=0, color=YEL)]), dict(t="text", text="ОФИЦИАЛЬНО ОТ ROCKSTAR", cue="Рокстар"),
+    dict(t="icon", name="console", cue="цель", color="#00e5ff", scale=0.6),
+    dict(t="pills", size=44, pills=[dict(text="PS5 · 30", cue="PS5"), dict(text="PS5 PRO · 30", cue="Pro"), dict(text="XBOX · 30", cue="Xbox")])]),
+  dict(say="Зачем? Так студия сохраняет плотность мира и детализацию картинки.", rate="+4%", items=[
+    dict(t="head", text="ЗАЧЕМ?", cue=0, size=150, color=YEL), dict(t="pills", pills=[dict(text="ПЛОТНЫЙ МИР", cue="плотность", color=LIME)]),
+    dict(t="pills", pills=[dict(text="ДЕТАЛИЗАЦИЯ", cue="детализацию", color="#00e5ff")]), dict(t="icon", name="eye", cue="картинки", color=PINK, scale=0.9)]),
+  dict(say="Посчитаем. При тридцати кадрах на один кадр есть тридцать три миллисекунды. А при шестидесяти — всего шестнадцать.", rate="+6%", items=[
+    dict(t="head", text="ПОСЧИТАЕМ", cue=0), dict(t="icon", name="clock", cue="тридцати", color=ORANGE, scale=0.75),
+    dict(t="big", text="33 МС", count=33, suffix=" МС", sub="НА КАДР ПРИ 30 FPS", cue="тридцать", color="#1d8f3a"),
+    dict(t="big", text="16 МС", count=16, suffix=" МС", sub="НА КАДР ПРИ 60 FPS", cue="шестидесяти", color="#e0245e")]),
+  dict(say="И главный тормоз — процессор. Он просчитывает каждого прохожего, машины, физику и полицию.", rate="+6%", items=[
+    dict(t="head", text="ГЛАВНЫЙ ТОРМОЗ", cue=0), dict(t="icon", name="chip", cue="процессор", color=ORANGE, scale=0.85),
+    dict(t="pills", size=46, pills=[dict(text="ПРОХОЖИЕ", cue="прохожего", color=PINK), dict(text="МАШИНЫ", cue="машины", color=YEL)]),
+    dict(t="pills", size=46, pills=[dict(text="ФИЗИКА", cue="физику", color=LIME), dict(text="ПОЛИЦИЯ", cue="полицию", color="#00e5ff")])]),
+  dict(say="А в PS5 Pro процессор почти тот же. Прокачали видеокарту, а не его.", rate="+4%", items=[
+    dict(t="head", text="А ЧТО PS5 PRO?", cue=0, color=YEL),
+    dict(t="list", rows=[dict(label="ЦП", text="ПОЧТИ ТОТ ЖЕ", cue="процессор", mark="cross", color=ORANGE), dict(label="ВИДЕО", text="СИЛЬНО МОЩНЕЕ", cue="Прокачали", mark="check", color=LIME)]),
+    dict(t="icon", name="gpu", cue="видеокарту", color=LIME, scale=0.85)]),
+  dict(say="Поэтому Pro получит не шестьдесят кадров, а картинку получше: апскейл PSSR и тени с трассировкой лучей.", rate="+6%", items=[
+    dict(t="head", text="ЧТО ДАСТ PRO", cue=0), dict(t="pills", pills=[dict(text="60 FPS", cue="шестьдесят", color="#ff6b6b", mark="cross")]),
+    dict(t="pills", pills=[dict(text="АПСКЕЙЛ PSSR", cue="апскейл", color="#00e5ff", mark="check")]), dict(t="pills", pills=[dict(text="RT-ТЕНИ", cue="тени", color=LIME, mark="check")])]),
+  dict(say="А режим шестидесяти кадров пока даже не анонсировали. Тридцать кадров — норм или нет? Пиши!", rate="+4%", items=[
+    dict(t="text", text="РЕЖИМ 60 FPS НЕ АНОНСИРОВАН", cue="режим", size=54), dict(t="head", text="30 FPS —", cue="Тридцать", size=140, color=YEL),
+    dict(t="head", text="НОРМ ИЛИ НЕТ?", cue="норм", size=120), dict(t="arrow", cue="Пиши")]),
+])

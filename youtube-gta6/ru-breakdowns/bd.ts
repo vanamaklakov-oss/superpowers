@@ -15,7 +15,8 @@ export type Item =
   | { t: "list"; rows: { label: string; text: string; cue: number; color?: string; mark?: "check" | "cross" }[] }
   | { t: "arrow"; cue: number; color?: string };
 export type Scene = { a: number; b: number; items: Item[] };
-export type Spec = { title: string; N: number; pal: { bg: [string, string]; blobs: string[]; accent: string[] }; scenes: Scene[] };
+export type Spec = { title: string; N: number; pal: { bg: [string, string]; blobs: string[]; accent: string[] }; fx?: { rays?: boolean; bursts?: boolean; doodles?: number }; scenes: Scene[] };
+let FX: NonNullable<Spec["fx"]> = {}, PAL: string[] = [];
 
 const W = 1080, H = 1920, INK = "#1d1433", PAPER = "#fffaf0";
 const F = (px: number) => `900 ${px}px "Inter Display", Inter, sans-serif`;
@@ -28,6 +29,11 @@ const POP = 10;   // frames an item takes to pop
 const backdrop = (c: Ctx, f: number, s: Spec, scene: number) => {
   const g = c.createLinearGradient(0, 0, W * 0.3, H); g.addColorStop(0, s.pal.bg[0]); g.addColorStop(1, s.pal.bg[1]);
   c.fillStyle = g; c.fillRect(0, 0, W, H);
+  if (FX.rays) {   // a slow sunburst behind everything: alternate wedges of light
+    c.save(); c.translate(540, 760); c.rotate(f * 0.004); c.fillStyle = "#ffffff";
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2; c.globalAlpha = 0.09; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 1700, a, a + Math.PI / 18); c.closePath(); c.fill(); }
+    c.restore(); c.globalAlpha = 1;
+  }
   s.pal.blobs.forEach((col, i) => {   // big soft blobs drifting on slow, different orbits
     const r = rng(40 + i), ph = r() * 6.28, sp = 0.004 + r() * 0.004;
     const x = W * (0.2 + 0.6 * r()) + Math.sin(f * sp + ph) * 220, y = H * (0.15 + 0.7 * r()) + Math.cos(f * sp * 1.3 + ph) * 260, rad = 380 + r() * 260;
@@ -36,7 +42,7 @@ const backdrop = (c: Ctx, f: number, s: Spec, scene: number) => {
   });
   const boil = Math.floor(f / 4);   // stop-motion boil: doodles redraw every 4 frames with a new wobble
   const dr = rng(900 + scene * 13);
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < (FX.doodles ?? 9); i++) {
     const x = dr() < 0.5 ? 40 + dr() * 200 : 840 + dr() * 200, y = 120 + dr() * 1650, kind = Math.floor(dr() * 4), col = s.pal.accent[i % s.pal.accent.length], sz = 26 + dr() * 34, rot = dr() * 6;
     const w = rng(boil * 31 + i), j = () => (w() - 0.5) * 4;
     c.save(); c.translate(x, y); c.rotate(rot + Math.sin(f * 0.02 + i) * 0.15); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 7; c.lineCap = "round"; c.lineJoin = "round"; c.globalAlpha = 0.85;
@@ -58,6 +64,15 @@ const sticker = (c: Ctx, cx: number, cy: number, w: number, h: number, shadow: s
 };
 const popAt = (c: Ctx, f: number, cue: number, cx: number, cy: number, tilt: number, fn: () => void) => {
   const t = (f - cue) / POP; if (t <= 0) return false;
+  const age = f - cue;
+  if (FX.bursts && age < 20) {   // confetti thrown out as the sticker lands
+    const r = rng(cue * 7 + Math.round(cx) + Math.round(cy)), p = age / 20;
+    c.save(); c.translate(cx, cy);
+    for (let i = 0; i < 16; i++) { const a = r() * Math.PI * 2, sp = 220 + r() * 260, d = sp * (1 - Math.pow(1 - p, 2)), col = PAL[i % PAL.length], sz = 10 + r() * 12;
+      c.save(); c.translate(Math.cos(a) * d, Math.sin(a) * d + p * p * 120); c.rotate(r() * 6 + age * 0.3); c.globalAlpha = 1 - p; c.fillStyle = col;
+      if (i % 3 === 0) { c.beginPath(); c.arc(0, 0, sz * 0.5, 0, Math.PI * 2); c.fill(); } else c.fillRect(-sz / 2, -sz / 4, sz, sz / 2); c.restore(); }
+    c.restore();
+  }
   const s = back(t), sq = 1 + Math.sin(clamp(t) * Math.PI) * 0.06;
   c.save(); c.translate(cx, cy); c.rotate(tilt * (1 - 0.3 * Math.sin(f * 0.05))); c.scale(s * sq, s / sq); c.globalAlpha = clamp(t * 3); fn(); c.restore(); return true;
 };
@@ -150,6 +165,7 @@ export const makeFilm = (s: Spec): Film => ({
   assets: { images: {} },
   shots: [{ id: "bd", start: 0, end: s.N, draw: (ctx: Ctx, f: number, env: Env) => {
     ctx.setTransform(env.scale, 0, 0, env.scale, 0, 0);
+    FX = s.fx ?? {}; PAL = [...s.pal.accent, ...s.pal.blobs];
     const si = Math.max(0, s.scenes.findIndex((sc) => f >= sc.a && f < sc.b)), sc = s.scenes[si], local = f - sc.a;
     backdrop(ctx, f, s, si);
     const z = 1 + 0.035 * (local / Math.max(1, sc.b - sc.a)), enter = 1 - easeOut(local / 8);   // slow push-in; each scene slides up into place

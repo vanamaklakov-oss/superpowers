@@ -85,7 +85,7 @@ def stage_spec(v):
                 for p in it.get(key, []): p["cue"] = cue(p["cue"])
             items.append(it)
         scenes.append(dict(a=r["a"], b=r["b"], items=items))
-    spec = dict(title=V["title"], N=N, pal=V["pal"], scenes=scenes)
+    spec = dict(title=V["title"], N=N, pal=V["pal"], fx=V.get("fx", {}), scenes=scenes)
     json.dump(spec, open(f"{ENGINE}/src/canvas-core/bd-{v}.json", "w"), ensure_ascii=False)
     open(f"{ENGINE}/src/canvas-core/bd{v}.ts", "w").write(f'import spec from "./bd-{v}.json";\nimport {{ makeFilm, type Spec }} from "./bd";\nexport const bd{v} = makeFilm(spec as unknown as Spec);\n')
     open(f"{ENGINE}/src/hosts/page-bd{v}.ts", "w").write(f'import {{ bd{v} }} from "../canvas-core/bd{v}";\nimport {{ mountFilm }} from "./page";\nmountFilm(bd{v});\n')

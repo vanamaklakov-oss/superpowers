@@ -1,7 +1,7 @@
 # Viral Russian GTA 6 shorts
 
 `python3 vbuild.py <name>` builds `/home/user/gta6_<name>_ru.mp4` from `cfg_<name>.py`
-(LINES = narration, SHOTS per line, TITLES (big|big2, colour, pill), KEYS highlighted words, SEED music).
+(LINES = narration, SHOTS per line, TITLES (big|big2, colour, pill), KEYS highlighted words, SEED; set MUSIC = True to add a music bed — default is voice only, as the creator asked).
 
 Shot types: `I:<screenshot>` official Rockstar screenshot pan, `V:<file>:<start>` landscape video
 (trailer) in a centre band over a blurred fill, `S:<material>:<start>:<TY|XC|FULL>` stream footage.

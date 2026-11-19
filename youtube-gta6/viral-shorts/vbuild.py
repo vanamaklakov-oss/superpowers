@@ -5,7 +5,7 @@ import importlib, json, os, subprocess, sys
 sys.path.insert(0, '/home/user/bd'); import build
 name = sys.argv[1]; C = importlib.import_module(f'cfg_{name}')
 D0 = f'/home/user/viral/{name}'; os.makedirs(D0, exist_ok=True); os.chdir(D0)
-M = '/home/user/stream/material'; IMG = '/tmp/claude-0/-home-user/0ec894cc-99b2-57e2-86d6-3ac041a64a76/scratchpad/rsmap/clean'
+M = '/home/user/stream/material'; IMG = '/home/user/viral/img'
 BOX = {'TY': (880, 780), 'XC': (340, 1190), 'FULL': (0, 1920)}
 FPS, PAUSE = 30, 0.35
 lines = C.LINES
@@ -37,10 +37,10 @@ for i, shots in enumerate(C.SHOTS):
             x = f"(iw-1080)*{'t/' + str(d) if k % 2 == 0 else '(1-t/' + str(d) + ')'}"
             vf = f"scale=-2:2050:flags=lanczos,crop=1080:1920:x='{x}':y='(ih-1920)/2',setsar=1,fps={FPS},format=yuv420p"
             inp = ['-loop', '1', '-framerate', str(FPS), '-i', f'{IMG}/{f[1]}.jpg']; credits.append((cuts[j] / FPS, cuts[j + 1] / FPS, 'скриншоты: Rockstar Games'))
-        subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', *inp, '-t', f'{d:.3f}', '-filter_complex', vf, '-frames:v', str(n), '-r', str(FPS), '-an', '-c:v', 'libx264', '-crf', '17', '-preset', 'fast', out], check=True)
+        if not os.environ.get('AUDIO_ONLY'): subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', *inp, '-t', f'{d:.3f}', '-filter_complex', vf, '-frames:v', str(n), '-r', str(FPS), '-an', '-c:v', 'libx264', '-crf', '17', '-preset', 'fast', out], check=True)
         parts.append(out); k += 1
 open('shots.txt', 'w').write(''.join(f"file '{p}'\n" for p in parts))
-subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'shots.txt', '-c', 'copy', 'joined.mp4'], check=True)
+if not os.environ.get('AUDIO_ONLY'): subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'shots.txt', '-c', 'copy', 'joined.mp4'], check=True)
 
 tt = lambda x: '%d:%02d:%05.2f' % (x // 3600, (x % 3600) // 60, x % 60)
 bgr = lambda c: '&H00%s%s%s&' % (c[5:7], c[3:5], c[1:3])
@@ -89,13 +89,18 @@ Style: Credit,Inter Display Black,30,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 open('titles.ass', 'w').write(hdr + '\n'.join(ev) + '\n')
-build.bed('bed.wav', TOT, starts[1:], seed=C.SEED)
-ins = ['-i', 'bed.wav']; fc = []
+MUSIC = getattr(C, 'MUSIC', False)   # default: voice only, no background music
+if MUSIC: build.bed('bed.wav', TOT, starts[1:], seed=C.SEED)
+ins = ['-i', 'bed.wav'] if MUSIC else ['-f', 'lavfi', '-t', f'{TOT}', '-i', 'anullsrc=r=48000:cl=stereo']; fc = []
 for i in range(len(lines)):
     ins += ['-i', f'v{i:02d}.mp3']; ms = int(vs[i] * 1000); fc.append(f'[{i + 1}]aresample=48000,adelay={ms}|{ms}[a{i}]')
 n = len(lines)
-fc = ';'.join(fc) + ';' + ''.join(f'[a{i}]' for i in range(n)) + f'amix=inputs={n}:normalize=0,aformat=channel_layouts=stereo,highpass=f=80,equalizer=f=3500:t=q:w=1:g=2,acompressor=threshold=-18dB:ratio=3,aecho=0.85:0.4:28:0.08,apad,atrim=0:{TOT},volume=1.3,asplit[vo][sc];[0]volume=0.55[mu];[mu][sc]sidechaincompress=threshold=0.01:ratio=8:attack=15:release=400[d];[d][vo]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5'
+vo = ';'.join(fc) + ';' + ''.join(f'[a{i}]' for i in range(n)) + f'amix=inputs={n}:normalize=0,aformat=channel_layouts=stereo,highpass=f=80,equalizer=f=3500:t=q:w=1:g=2,acompressor=threshold=-18dB:ratio=3,aecho=0.85:0.4:28:0.08,apad,atrim=0:{TOT},volume=1.3'
+fc = (vo + ',asplit[vo][sc];[0]volume=0.55[mu];[mu][sc]sidechaincompress=threshold=0.01:ratio=8:attack=15:release=400[d];[d][vo]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5') if MUSIC else (vo + ',loudnorm=I=-14:TP=-1.5')
 subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', *ins, '-filter_complex', fc, '-ar', '48000', 'mix.wav'], check=True)
+if os.environ.get('AUDIO_ONLY'):   # re-mix sound only, keep the rendered picture
+    o = f'/home/user/gta6_{name}_ru.mp4'; subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-i', o, '-i', 'mix.wav', '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', o + '.tmp.mp4'], check=True)
+    os.replace(o + '.tmp.mp4', o); print('audio', o); sys.exit()
 vf = "drawbox=x=0:y=0:w=1080:h=560:color=black@0.25:t=fill,eq=saturation=1.12:contrast=1.04,subtitles=titles.ass"
 out = f'/home/user/gta6_{name}_ru.mp4'
 subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-i', 'joined.mp4', '-i', 'mix.wav', '-vf', vf, '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-maxrate', '6M', '-bufsize', '12M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', out], check=True)

@@ -105,8 +105,36 @@ class Still:
         x0 = (self.im.width - cw) / 2 + sx; y0 = (self.im.height - ch) / 2 + np.cos(dt * 0.7) * H * 0.004
         return self.im.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
 
+
+# scenes without a clip: a typographic card in the same palette over a darkened, blurred still from one of the clips
+BIG = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", int(W * 0.17)); MID = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", int(W * 0.085))
+CARDS = {6: (1, ["1633", "ИНКВИЗИЦИЯ"]), 7: (5, ["ОТРЁКСЯ", "НА КОЛЕНЯХ"]), 8: (4, ["ДОМАШНИЙ", "АРЕСТ"]),
+         9: (3, ["1757", "ЛОНДОН"]), 10: (1, ["ФРАЗА —", "ЛЕГЕНДА"]), 11: (2, ["1992", "ЦЕРКОВЬ ОШИБЛАСЬ"])}
+class Card:
+    def __init__(self, n, k):
+        clip, lines = CARDS[n]; raw = subprocess.check_output(["ffmpeg", "-loglevel", "error", "-ss", "6", "-i", f"{HERE}/clips/{clip:02d}.mp4", "-frames:v", "1",
+            "-vf", f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"])
+        im = Image.frombytes("RGB", (W, H), raw).filter(ImageFilter.GaussianBlur(W / 90))
+        a = np.asarray(im).astype(np.float32) * 0.42; a[..., 0] *= 0.85; a[..., 2] *= 1.08   # darker, cooler (teal)
+        self.bg = Image.fromarray(a.clip(0, 255).astype(np.uint8)); self.lines = lines; self.k = k
+    def at(self, dt):
+        z = 1 + 0.03 * dt; cw, ch = W / z, H / z; x0, y0 = (W - cw) / 2, (H - ch) / 2
+        im = self.bg.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
+        lay = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(lay)          # a slow shaft of light
+        sx = W * (0.15 + 0.05 * dt); d.polygon([(sx, 0), (sx + W * 0.22, 0), (sx + W * 0.62, H), (sx + W * 0.30, H)], fill=(235, 170, 80, 26))
+        im = Image.alpha_composite(im.convert("RGBA"), lay.filter(ImageFilter.GaussianBlur(40))).convert("RGB")
+        d = ImageDraw.Draw(im); y = H * 0.36
+        for j, txt in enumerate(self.lines):
+            p = min(1, max(0, (dt - 0.15 - j * 0.35) / 0.25))
+            if p <= 0: continue
+            f = BIG if (j == 0 and len(txt) <= 5) else MID; col = (236, 168, 60) if j == 0 else (240, 232, 214)
+            d.text((W // 2, y + (1 - p) * 40), txt, font=f, anchor="mm", fill=col, stroke_width=4, stroke_fill=(8, 14, 16))
+            y += (f.size * 1.15)
+        return im
+
 def source(r, k):
     n = r["n"]
+    if n in CARDS and not os.path.exists(f"{HERE}/clips/{n:02d}.mp4"): return Card(n, k)
     for ext in ("mp4", "mov"):
         p = f"{HERE}/clips/{n:02d}.{ext}"
         if os.path.exists(p): return Clip(p, r["t1"] - r["t0"])

@@ -2,3 +2,4 @@ out/
 __pycache__/
 images/
 vo/*.p*.mp3
+clips/

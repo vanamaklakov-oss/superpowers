@@ -46,7 +46,7 @@ def tts():
     import asyncio, ssl, time, edge_tts, edge_tts.communicate as c
     c._SSL_CTX = ssl.create_default_context(cafile="/root/.ccr/ca-bundle.crt"); VO = f"{DIR}/vo"; os.makedirs(VO, exist_ok=True)
     def dur(f): return float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f]))
-    def say(text, out):
+    def say(text, out, VOICE=VOICE, RATE=RATE, PITCH=PITCH):
         for dr, dp in [(0, 0), (1, 0), (-1, 1), (2, -1), (0, 2), (-2, 0), (3, 1)]:
             async def go():
                 com = edge_tts.Communicate(text, voice=VOICE, rate=f"{RATE + dr:+d}%", pitch=f"{PITCH + dp:+d}Hz", boundary="WordBoundary"); ws = []
@@ -60,20 +60,21 @@ def tts():
                 if ws and os.path.getsize(out) > 2000: return ws
             except Exception: time.sleep(1.5)
         raise RuntimeError(f"tts failed: {text}")
-    for n, text, *_ in SCENES:
-        out = f"{VO}/{n:02d}.mp3"
-        if os.path.exists(out + ".json") and json.load(open(out + ".json")).get("text") == text: continue
+    for n, text, kind, par in SCENES:
+        out = f"{VO}/{n:02d}.mp3"; vs = list(par.get("voice", (VOICE, RATE, PITCH)))
+        if os.path.exists(out + ".json") and json.load(open(out + ".json")).get("text") == text and json.load(open(out + ".json")).get("voice", vs) == vs: continue
         parts = [s for s in re.split(r"(?<=[.!?])\s+", text) if s]; files, words, t = [], [], 0.0
         for i, s in enumerate(parts):
-            pf = f"{VO}/{n:02d}.p{i}.mp3"; ws = say(s, pf); files.append(pf); words += [{**w, "s": w["s"] + t} for w in ws]; t += dur(pf)
+            pf = f"{VO}/{n:02d}.p{i}.mp3"; ws = say(s, pf, *vs); files.append(pf); words += [{**w, "s": w["s"] + t} for w in ws]; t += dur(pf)
         lst = f"{VO}/{n:02d}.txt"; open(lst, "w").write("".join(f"file '{f}'\n" for f in files))
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out], check=True)
         for f in files + [lst]: os.remove(f)
-        json.dump({"text": text, "dur": dur(out), "words": words}, open(out + ".json", "w"), ensure_ascii=False)
+        json.dump({"text": text, "voice": vs, "dur": dur(out), "words": words}, open(out + ".json", "w"), ensure_ascii=False)
         print(n, "ok", round(dur(out), 2), [w["w"] for w in words], flush=True)
 
-def pcm(p):
-    raw = subprocess.check_output(["ffmpeg", "-loglevel", "error", "-i", p, "-ac", "1", "-ar", str(SR), "-f", "s16le", "-"])
+FX = {"ghost": "aecho=0.8:0.75:70|160:0.45|0.3,lowpass=f=3000,volume=1.1", "old": "lowpass=f=4200,highpass=f=120"}
+def pcm(p, fx=None):
+    raw = subprocess.check_output(["ffmpeg", "-loglevel", "error", "-i", p] + (["-af", FX[fx]] if fx else []) + ["-ac", "1", "-ar", str(SR), "-f", "s16le", "-"])
     return np.frombuffer(raw, np.int16).astype(np.float32) / 32768
 
 def check():
@@ -95,7 +96,7 @@ def trim(a):
     s, e = max(on[0] - 960, 0), min(on[-1] + 2400, len(a)); return a[s:e], s / SR
 rows, t = [], 0.35
 for n, text, kind, par in SCENES:
-    a, lead = trim(pcm(f"{DIR}/vo/{n:02d}.mp3")); meta = json.load(open(f"{DIR}/vo/{n:02d}.mp3.json"))
+    a, lead = trim(pcm(f"{DIR}/vo/{n:02d}.mp3", par.get("fx"))); meta = json.load(open(f"{DIR}/vo/{n:02d}.mp3.json"))
     words = [(t + w["s"] - lead, t + w["s"] - lead + w["d"], w["w"]) for w in meta["words"]]
     extra = par.get("hold", 0.5 if kind in ("knock", "wake", "window", "call") else 0.0)
     rows.append({"n": n, "kind": kind, "par": par, "t0": t, "a": a, "words": words}); t += len(a) / SR + GAP + extra
@@ -177,12 +178,12 @@ def avatar(kind, D):
     im = ss(D, D, fn, 4); m = Image.new("L", (D * 4, D * 4), 0); ImageDraw.Draw(m).ellipse([0, 0, D * 4 - 1, D * 4 - 1], fill=255)
     im.putalpha(Image.composite(im.getchannel("A"), Image.new("L", (D, D), 0), m.resize((D, D), Image.LANCZOS))); AVC[(kind, D)] = im; return im
 
-def hero(who="boy", eyes="open", px=0, scared=False):
+def hero(who="boy", eyes="open", px=0, scared=False, hood=None):
     w, h = 820, 1300
     def fn(d, k):
         S = lambda v: int(v * k); o = OUTL; L = S(6)
-        hood = (214, 128, 58) if who == "boy" else (120, 96, 200)
-        d.rounded_rectangle([S(90), S(700), S(730), S(h + 200)], S(200), fill=hood, outline=o, width=L)
+        hc = hood or ((214, 128, 58) if who == "boy" else (120, 96, 200))
+        d.rounded_rectangle([S(90), S(700), S(730), S(h + 200)], S(200), fill=hc, outline=o, width=L)
         d.line([S(410), S(760), S(410), S(h)], fill=o, width=L)
         d.line([S(360), S(720), S(345), S(860)], fill=(240, 236, 226), width=S(8)); d.line([S(460), S(720), S(475), S(860)], fill=(240, 236, 226), width=S(8))
         d.rectangle([S(350), S(600), S(470), S(720)], fill=(226, 180, 140)); d.line([S(350), S(600), S(350), S(712)], fill=o, width=L); d.line([S(470), S(600), S(470), S(712)], fill=o, width=L)
@@ -470,8 +471,227 @@ def sc_choice(r, t):
         ttext(d, (W / 2, 1610), p.get("part", "Часть 1"), f_semi(44), SUB + (int(255 * a3),), "mm")
     return im
 
+# ---------------- village scenes (сериал «деревенский хоррор») ----------------
+LOG, LOGD = (92, 62, 40), (46, 30, 20)
+def logs(d, x0, y0, x1, y1, h=72, base=LOG):
+    for i, y in enumerate(range(y0, y1, h)):
+        c = tuple(int(v * (0.9 + 0.12 * ((i * 37) % 5) / 4)) for v in base)
+        d.rounded_rectangle([x0 - 20, y, x1 + 20, y + h - 4], 30, fill=c); d.line([x0, y + h - 3, x1, y + h - 3], fill=LOGD, width=6)
+        for kx in range((i * 211) % 300 + 60, x1, 420): d.ellipse([kx, y + 22, kx + 26, y + 40], outline=LOGD, width=3)
+def planks(d, y0, x0=0, x1=W, col=(70, 48, 32)):
+    d.rectangle([x0, y0, x1, H], fill=col)
+    for x in range(x0, x1, 130): d.line([x, y0, x + (x - W / 2) * 0.25, H], fill=(44, 30, 20), width=5)
+def night(im, a=120): im.alpha_composite(Image.new("RGBA", (W, H), (4, 6, 22, a)))
+def glow_layer(cx, cy, rx, ry, col, a):
+    g = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ImageDraw.Draw(g).ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=col + (a,)); return g.filter(ImageFilter.GaussianBlur(min(rx, ry) * 0.5))
+
+def ded_face(d, k, cx, cy, r, scared=False):
+    S = lambda v: int(v * k); o = OUTL
+    face(d, k, cx, cy, r, skin=(222, 186, 156), hair=(205, 205, 212), style="boy", eyes="scared" if scared else "open", brow=1.2 if scared else 0.6, mouth="o" if scared else "line", lw=r / 45, glasses=True)
+    d.chord([S(cx - r * 0.95), S(cy - r * 0.2), S(cx + r * 0.95), S(cy + r * 1.75)], 0, 180, fill=(232, 232, 238), outline=o, width=S(r / 45))
+    d.ellipse([S(cx - r * 0.3), S(cy + r * 0.28), S(cx + r * 0.3), S(cy + r * 0.52)], fill=(232, 232, 238))
+    if scared: d.ellipse([S(cx - r * 0.1), S(cy + r * 0.5), S(cx + r * 0.1), S(cy + r * 0.72)], fill=(70, 30, 35), outline=o, width=S(r / 45))
+AVF = {}
+def ded_av(D):
+    if D not in AVF:
+        im = ss(D, D, lambda d, k: (d.ellipse([0, 0, D * k - 1, D * k - 1], fill=(120, 96, 70)), ded_face(d, k, D / 2, D * 0.45, D * 0.3)), 4)
+        AVF[D] = im
+    return AVF[D]
+FACES_EXTRA = {"ded": ded_av}
+
+def mokraya(h=1000, hand=False):
+    w = int(h * 0.55)
+    def fn(d, k):
+        S = lambda v: int(v * k * h / 1000); o = OUTL
+        d.polygon([(S(150), S(260)), (S(400), S(260)), (S(520), S(1000)), (S(30), S(1000))], fill=(214, 220, 226), outline=o)
+        for x in (180, 260, 330): d.line([S(x), S(300), S(x - 40 + (x % 3) * 30), S(980)], fill=(170, 182, 196), width=S(5))
+        d.ellipse([S(185), S(70), S(365), S(270)], fill=(150, 160, 170), outline=o, width=S(5))
+        d.polygon([(S(170), S(60)), (S(380), S(60)), (S(430), S(620)), (S(370), S(560)), (S(330), S(660)), (S(275), S(580)), (S(220), S(670)), (S(180), S(560)), (S(120), S(620))], fill=(10, 10, 14))
+        for x in (140, 230, 320, 410): d.line([S(x), S(640), S(x), S(700 + x % 60)], fill=(120, 170, 220), width=S(4))
+    return ss(w, h, fn, 2)
+
+def sc_banya(r, t):
+    p = r["par"]; lt = t - r["t0"]
+    def mk():
+        im = Image.new("RGBA", (W, H), (0, 0, 0, 255)); d = ImageDraw.Draw(im); logs(d, 0, 0, W, 1600); planks(d, 1600)
+        d.rectangle([690, 250, 970, 480], fill=(70, 50, 34)); d.rectangle([710, 270, 950, 460], fill=(16, 24, 52))
+        for i in range(14): x, y = 715 + (i * 53) % 230, 275 + (i * 31) % 180; d.ellipse([x, y, x + 5, y + 5], fill=(200, 210, 240))
+        d.line([830, 270, 830, 460], fill=(70, 50, 34), width=10); d.line([710, 365, 950, 365], fill=(70, 50, 34), width=10)
+        d.rectangle([560, 1250, W, 1320], fill=(150, 112, 72), outline=OUTL, width=5); d.rectangle([600, 1320, 640, 1600], fill=(110, 80, 50)); d.rectangle([1000, 1320, 1040, 1600], fill=(110, 80, 50))
+        d.rectangle([60, 1050, 420, 1600], fill=(42, 40, 44), outline=OUTL, width=8)
+        for i in range(9):
+            x, y = 70 + (i % 5) * 70 + (i // 5) * 35, 960 + (i // 5) * -60 + (i % 2) * 20; d.ellipse([x, y, x + 110, y + 95], fill=(96 + i * 6, 96 + i * 6, 104 + i * 6), outline=OUTL, width=5)
+        d.rectangle([150, 1290, 330, 1450], fill=(20, 12, 10), outline=OUTL, width=6); d.rectangle([60, 1150, 420, 1170], fill=(30, 30, 34))
+        return im
+    im = cached(("banya", r["n"]), mk).copy(); d = ImageDraw.Draw(im)
+    g = p.get("glow", 1.0); fl = g * (0.8 + 0.2 * math.sin(lt * 13) * math.sin(lt * 7.3))
+    d.rectangle([158, 1298, 322, 1442], fill=(int(60 + 195 * fl), int(30 + 110 * fl), 10))
+    for j in range(int(3 + 4 * g)):
+        fx = 175 + j * 22; fh = (40 + 50 * g) * (0.7 + 0.3 * math.sin(lt * 11 + j * 2))
+        d.polygon([(fx, 1442), (fx + 18, 1442), (fx + 9, 1442 - fh)], fill=(255, int(150 + 80 * fl), 40))
+    if p.get("hero", True):
+        b = cached(("vhero", p.get("scared", False), (lt % 3.1) < 0.13), lambda: hero("boy", "closed" if (lt % 3.1) < 0.13 else "open", 0, p.get("scared", False), (150, 52, 46)).resize((656, 1040), Image.LANCZOS))
+        im.alpha_composite(b, (400 + (int(3 * math.sin(lt * 40)) if p.get("scared") else 0), H - 1040))
+    night(im, 150 - int(40 * fl))
+    im.alpha_composite(fade(cached("bglow", lambda: glow_layer(240, 1370, 420, 340, (255, 140, 50), 150)).copy(), fl))
+    if p.get("water"): wet(im, appear(t, wt(r, p["water"]), 4.0))
+    rules_overlay(im, r, t)
+    return zoom(im, 1.0 + 0.05 * lt / (r["t1"] - r["t0"]), 0.45, 0.7)
+
+def wet(im, a):
+    if a <= 0: return
+    g = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(g)
+    d.ellipse([200 - 300 * a, 1700 - 60 * a, 700 + 360 * a, 1830 + 90 * a], fill=(60, 100, 140, int(150 * a)))
+    d.ellipse([300, 1730, 620 + 200 * a, 1770 + 30 * a], fill=(140, 180, 220, int(90 * a))); im.alpha_composite(g)
+
+def rules_overlay(im, r, t):
+    rs = r["par"].get("rules", [])
+    for i, ru in enumerate(rs):
+        a = appear(t, wt(r, ru.get("at", -1)), 0.25)
+        if a <= 0: continue
+        c = Image.new("RGBA", (W, 130), (0, 0, 0, 0)); d = ImageDraw.Draw(c); f1, f2 = f_black(32), f_bold(36)
+        tw = max(d.textlength(ru["text"].upper(), font=f2), 260) + 70
+        d.rounded_rectangle([(W - tw) / 2, 0, (W + tw) / 2, 112], 26, fill=(14, 12, 14, 225), outline=(230, 70, 60, 255) if ru.get("broken") else (90, 80, 80, 255), width=4)
+        ttext(d, (W / 2, 32), f"ПРАВИЛО {ru.get('n', i + 1)}", f1, (235, 72, 60), "mm"); ttext(d, (W / 2, 78), ru["text"].upper(), f2, (240, 238, 232), "mm")
+        im.alpha_composite(fade(c, a), (0, 190 + i * 132 - int((1 - a) * 20)))
+
+def sc_vwindow(r, t):
+    p = r["par"]; lt = t - r["t0"]; who = p.get("who", "none")
+    def mk():
+        im = Image.new("RGBA", (W, H), (0, 0, 0, 255)); d = ImageDraw.Draw(im); logs(d, 0, 0, W, H); return im
+    im = cached("vwin", mk).copy(); sh, pops = knocks_at(r, t)
+    gl = Image.new("RGBA", (W, H), (0, 0, 0, 0)); gd = ImageDraw.Draw(gl); gd.rectangle([200, 420, 880, 1260], fill=(12, 20, 46, 255))
+    for i in range(40):
+        x = (i * 97 + lt * 30 * (1 + i % 3)) % 680 + 200; y = (i * 131 + lt * 90 * (1 + i % 2)) % 840 + 420; gd.ellipse([x, y, x + 6, y + 6], fill=(220, 226, 245, 255))
+    ap = appear(t, wt(r, p.get("at", -1)), 0.8)
+    if who == "ded" and ap > 0:
+        f = cached("dedbig", lambda: ss(520, 640, lambda d, k: ded_face(d, k, 260, 300, 200, False), 2)); gl.alpha_composite(fade(f.copy(), ap), (280 + int(sh), 560))
+        gl.alpha_composite(Image.new("RGBA", (W, H), (20, 40, 90, 70)))
+    if who == "mokraya" and ap > 0: gl.alpha_composite(fade(cached("mokw", lambda: mokraya(1300)).copy(), ap), (540 - 357 + int(sh), 520))
+    if p.get("hand") is not None:
+        ah = appear(t, wt(r, p["hand"]), 0.15)
+        if ah > 0:
+            hd = ImageDraw.Draw(gl); cx, cy = 560 + int(sh), 880; col = (180, 210, 235, int(200 * ah))
+            hd.ellipse([cx - 90, cy - 70, cx + 90, cy + 110], fill=col)
+            for j, (dx, ln) in enumerate(((-80, 120), (-38, 165), (6, 180), (50, 160), (100, 90))): hd.rounded_rectangle([cx + dx - 17, cy - 40 - ln, cx + dx + 17, cy - 20], 17, fill=col)
+            for j in range(5): hd.line([cx - 70 + j * 35, cy + 90, cx - 70 + j * 35, cy + 90 + min(260, (t - wt(r, p["hand"])) * 60 * (1 + j % 3))], fill=col, width=7)
+    m = Image.new("L", (W, H), 0); ImageDraw.Draw(m).rectangle([200, 420, 880, 1260], fill=255)
+    im.paste(gl, (0, 0), Image.composite(gl.getchannel("A"), Image.new("L", (W, H), 0), m)); d = ImageDraw.Draw(im)
+    d.rectangle([200, 420, 880, 1260], outline=(124, 88, 58), width=34); d.line([540, 420, 540, 1260], fill=(124, 88, 58), width=26); d.line([200, 800, 880, 800], fill=(124, 88, 58), width=26)
+    d.rectangle([150, 1260, 930, 1310], fill=(140, 100, 66), outline=OUTL, width=5)
+    for x0 in (200, 556): d.polygon([(x0 + 20, 436), (x0 + 120, 436), (x0 + 20, 520)], fill=(220, 230, 245, 140))
+    night(im, 110); draw_pops(im, pops); rules_overlay(im, r, t)
+    return zoom(im, 1.0 + 0.08 * lt / (r["t1"] - r["t0"]), 0.5, 0.45)
+
+def sc_yard(r, t):
+    p = r["par"]; lt = t - r["t0"]
+    def mk():
+        im = grad((8, 12, 30), (34, 40, 70)); d = ImageDraw.Draw(im)
+        for i in range(70): x, y = (i * 389) % W, (i * 211) % 900; d.ellipse([x, y, x + 4, y + 4], fill=(210, 215, 240))
+        d.ellipse([780, 160, 900, 280], fill=(236, 232, 210))
+        d.polygon([(0, 1180), (W, 1120), (W, H), (0, H)], fill=(196, 206, 228))
+        bx = 60; logs(d, bx, 760, bx + 430, 1200, 62); d.polygon([(bx - 40, 780), (bx + 215, 600), (bx + 470, 780)], fill=(60, 44, 34), outline=OUTL)
+        d.polygon([(bx - 40, 780), (bx + 215, 600), (bx + 470, 780), (bx + 430, 790), (bx + 215, 640), (bx, 790)], fill=(232, 236, 246))
+        d.rectangle([bx + 0, 760, bx + 430, 1200], outline=OUTL, width=5); d.rectangle([bx + 260, 900, bx + 360, 980], fill=(255, 190, 90), outline=OUTL, width=6)
+        d.rectangle([0, 1150, bx + 470, 1200], fill=(226, 232, 244))
+        for x in range(540, W + 40, 60): d.polygon([(x, 1200), (x + 44, 1200), (x + 44, 1010), (x + 22, 985), (x, 1010)], fill=(70, 56, 46), outline=OUTL)
+        d.rectangle([520, 1060, W, 1080], fill=(60, 48, 40)); d.rectangle([520, 1140, W, 1160], fill=(60, 48, 40))
+        g = glow_layer(bx + 310, 940, 160, 120, (255, 180, 80), 90); im.alpha_composite(g); return im
+    im = cached("yard", mk).copy()
+    a = appear(t, wt(r, p.get("at", -1)), 1.5); x = 900 - 260 * min(1, max(0, (t - wt(r, p.get("at", -1))) / 8)) if a > 0 else 900
+    if a > 0:
+        d = ImageDraw.Draw(im)
+        for i in range(8):
+            fx = x + 60 + i * 55
+            if fx < W: d.ellipse([fx, 1330 + (i % 2) * 30, fx + 34, 1350 + (i % 2) * 30], fill=(80, 110, 150, int(200 * a)))
+        im.alpha_composite(fade(cached("mok", lambda: mokraya(620)).copy(), a), (int(x - 170), 760))
+    sn = Image.new("RGBA", (W, H), (0, 0, 0, 0)); sd = ImageDraw.Draw(sn)
+    for i in range(90):
+        sx = (i * 113 + lt * 25 * (1 + i % 3)) % W; sy = (i * 197 + lt * 110 * (1 + i % 2)) % H; sd.ellipse([sx, sy, sx + 7, sy + 7], fill=(240, 244, 255, 200))
+    im.alpha_composite(sn); night(im, 70); rules_overlay(im, r, t)
+    return zoom(im, 1.0 + 0.06 * lt / (r["t1"] - r["t0"]), 0.6, 0.6)
+
+def sc_wetdoor(r, t):
+    p = r["par"]; lt = t - r["t0"]
+    def mk():
+        im = Image.new("RGBA", (W, H), (0, 0, 0, 255)); d = ImageDraw.Draw(im); logs(d, 0, 0, W, 1500)
+        d.rectangle([180, 0, 900, 1480], fill=(104, 72, 46), outline=OUTL, width=8)
+        for x in range(180, 900, 120): d.line([x, 0, x, 1480], fill=(70, 48, 30), width=6)
+        d.rectangle([180, 380, 900, 430], fill=(84, 58, 38)); d.rectangle([180, 1100, 900, 1150], fill=(84, 58, 38))
+        d.rectangle([140, 1480, 940, 1530], fill=(56, 38, 26), outline=OUTL, width=5); planks(d, 1530); return im
+    im = cached("wetdoor", mk).copy(); a = appear(t, wt(r, p.get("at", -1)), 5.0)
+    if a > 0:
+        g = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(g)
+        d.rectangle([180, 1480 - 260 * a, 900, 1480], fill=(30, 40, 60, int(110 * a)))
+        d.ellipse([540 - 380 * a - 80, 1520, 540 + 380 * a + 80, 1560 + 330 * a], fill=(90, 150, 200, int(220 * a)))
+        d.ellipse([400, 1560, 480 + 250 * a, 1590 + 90 * a], fill=(190, 225, 255, int(160 * a))); im.alpha_composite(g)
+    night(im, 100); im.alpha_composite(cached("wglow", lambda: glow_layer(540, 1540, 500, 60, (255, 210, 140), 60)))
+    return zoom(im, 1.0 + 0.1 * lt / (r["t1"] - r["t0"]), 0.5, 0.85)
+
+def sc_face(r, t):
+    p = r["par"]; lt = t - r["t0"]; sc = p.get("scared", False)
+    def mk():
+        im = Image.new("RGBA", (W, H), (0, 0, 0, 255)); logs(ImageDraw.Draw(im), 0, 0, W, H); night(im, 170); return im
+    im = cached("facebg", mk).copy(); blink = (lt % 2.7) < 0.12 and not sc
+    hb = cached(("bigface", sc, blink), lambda: hero("boy", "closed" if blink else "open", 0, sc, (150, 52, 46)).resize((1312, 2080), Image.LANCZOS))
+    im.alpha_composite(hb, (540 - 656 + (int(5 * math.sin(lt * 40)) if sc else 0), 820 - 640))
+    im.alpha_composite(fade(cached("fglow", lambda: glow_layer(150, 1100, 500, 700, (255, 130, 50), 120)).copy(), p.get("glow", 0.8) * (0.85 + 0.15 * math.sin(lt * 9))))
+    if sc: im.alpha_composite(Image.new("RGBA", (W, H), (40, 0, 0, int(30 + 20 * math.sin(lt * 5)))))
+    rules_overlay(im, r, t); return zoom(im, 1.0 + 0.06 * lt / (r["t1"] - r["t0"]), 0.5, 0.4)
+
+def thumb(n, w, h):
+    rr = next(x for x in rows if x["n"] == n); return RENDER[rr["kind"]](rr, rr["t1"] - 0.3).convert("RGB").resize((w, h), Image.LANCZOS)
+def sc_choice2(r, t):
+    p = r["par"]; im = grad((30, 22, 20), (10, 8, 8)); d = ImageDraw.Draw(im); w = r["words"]
+    tb = wt(r, p["b_at"]); a1, a2, a3 = appear(t, w[0][0]), appear(t, tb), appear(t, w[-1][0], 0.2)
+    ttext(d, (W / 2, 420), "ЧТО МНЕ ДЕЛАТЬ?", f_black(76), (240, 236, 228), "mm")
+    for i, (key, a, col, x0) in enumerate((("a", a1, (70, 130, 230), 90), ("b", a2, (240, 140, 50), 570))):
+        if a <= 0: continue
+        c = Image.new("RGBA", (440, 900), (0, 0, 0, 0)); cd = ImageDraw.Draw(c)
+        th = cached(("thumb", p[key + "_img"]), lambda: thumb(p[key + "_img"], 400, 600)); cd.rounded_rectangle([0, 30, 440, 690], 30, fill=(50, 40, 36))
+        c.paste(th, (20, 50)); cd.ellipse([0, 0, 90, 90], fill=col, outline=(255, 255, 255), width=5); ttext(cd, (45, 45), str(i + 1), f_black(52), (255, 255, 255), "mm")
+        for j, l in enumerate(wrap(cd, p[key].upper(), f_black(44), 420)): ttext(cd, (220, 740 + j * 54), l, f_black(44), (245, 240, 232), "mm")
+        im.alpha_composite(fade(c, a), (x0, 560 + int((1 - a) * 40)))
+    if a3 > 0:
+        ttext(d, (W / 2, 1520), "РЕШАЙ", f_black(int(150 * (1 + 0.25 * (1 - a3)))), YEL + (int(255 * a3),), "mm")
+        ttext(d, (W / 2, 1640), "пиши 1 или 2 в комментариях", f_semi(48), (230, 226, 220, int(255 * a3)), "mm")
+        ttext(d, (W / 2, 1720), p.get("part", "Серия 1"), f_semi(42), SUB + (int(255 * a3),), "mm")
+    return im
+
+def vote_overlay(im, r, t):
+    v = r["par"].get("vote")
+    if not v: return
+    a = appear(t, r["t0"], 0.4) * (1 - appear(t, r["t0"] + v.get("dur", 4.0), 0.4))
+    if a <= 0: return
+    c = Image.new("RGBA", (W, 120), (0, 0, 0, 0)); d = ImageDraw.Draw(c); pr = min(1, (t - r["t0"]) / 1.0) * v["pct"] / 100
+    d.rounded_rectangle([90, 10, W - 90, 100], 26, fill=(30, 26, 26, 230)); d.rounded_rectangle([90, 10, 90 + (W - 180) * pr, 100], 26, fill=(232, 80, 60, 255))
+    ttext(d, (130, 55), v["text"], f_bold(38), (255, 255, 255), "lm"); ttext(d, (W - 130, 55), f"{int(v['pct'] * min(1, (t - r['t0'])))}%", f_black(40), (255, 255, 255), "rm")
+    im.alpha_composite(fade(c, a), (0, 200))
+
+GRAIN = [Image.fromarray(np.dstack([np.full((H // 2, W // 2), 128, np.uint8)] * 3 + [(rng.random((H // 2, W // 2)) * 34).astype(np.uint8)]), "RGBA").resize((W, H), Image.NEAREST) for _ in range(4)]
+VIGN = None
+def style_overlay(im, r, t):
+    global VIGN
+    stl = getattr(ST, "STYLE", {})
+    if stl.get("grain"):
+        if VIGN is None:
+            yy, xx = np.mgrid[0:H, 0:W]; dd = np.sqrt(((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2)
+            VIGN = Image.fromarray(np.dstack([np.zeros((H, W), np.uint8)] * 3 + [(np.clip(dd - 0.55, 0, 1) * 330).clip(0, 230).astype(np.uint8)]), "RGBA")
+        im.alpha_composite(VIGN); im.alpha_composite(GRAIN[int(t * 12) % 4])
+    tm = r["par"].get("timer")
+    if tm:
+        hh, mm, *s0 = [int(x) for x in tm.split(":")]; sec = (s0[0] if s0 else 0) + int(t - r["t0"]) if s0 else None
+        txt = f"{hh:02d}:{mm + (sec // 60 if sec else 0):02d}:{sec % 60:02d}" if s0 else f"{hh:02d}:{mm:02d}"
+        d = ImageDraw.Draw(im); fw = d.textlength(txt, font=F("Inter-SemiBold", 36)) + 50
+        d.rounded_rectangle([W / 2 - fw / 2, 96, W / 2 + fw / 2, 152], 14, fill=(12, 12, 14, 220)); ttext(d, (W / 2, 124), txt, F("Inter-SemiBold", 36), (236, 236, 236), "mm")
+    if stl.get("series") and r is rows[0] and t - r["t0"] < 3.5:
+        a = 1 - appear(t, r["t0"] + 3.0, 0.5); d = ImageDraw.Draw(im)
+        ttext(d, (W / 2, 1780), stl["series"], f_black(46), (255, 255, 255, int(230 * a)), "mm")
+    vote_overlay(im, r, t)
+
 RENDER = {"lock": sc_lock, "wake": sc_wake, "chat": sc_chat, "pinned": sc_pinned, "call": sc_call, "doors": sc_doors, "door_open": sc_door_open,
-          "room": sc_room, "knock": sc_knock, "window": sc_window, "choice": sc_choice}
+          "room": sc_room, "knock": sc_knock, "window": sc_window, "choice": sc_choice,
+          "banya": sc_banya, "vwindow": sc_vwindow, "yard": sc_yard, "wetdoor": sc_wetdoor, "face": sc_face, "choice2": sc_choice2}
 
 # ---------------- captions ----------------
 def groups(words):
@@ -554,22 +774,24 @@ def build_audio(path):
     mix = np.tanh((voice + bed * np.clip((TOTAL - x) / 1.5, 0, 1) * np.clip(x / 0.6, 0, 1) + fx) * 1.05) * 0.95
     with wave.open(path, "wb") as w: w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((mix * 32767).astype(np.int16).tobytes())
 
+CAPY = getattr(ST, "STYLE", {}).get("capy", 1300)
 def frame(t, caps):
     r = next((x for x in rows if x["t0"] <= t < x["t1"]), rows[0] if t < rows[0]["t0"] else rows[-1])
     im = RENDER[r["kind"]](r, max(t, r["t0"]))
     if im.mode != "RGBA": im = im.convert("RGBA")
+    style_overlay(im, r, t)
     for c0, c1, g in caps:
         if c0 <= t < c1:
             cap = caption(g, sum(1 for w in g if w[0] <= t + 0.03)); pop = appear(t, c0, 0.12)
             if pop < 1: cap = cap.resize((W, int(260 * (0.9 + 0.1 * pop))), Image.BILINEAR)
-            im.alpha_composite(cap, (0, 1300)); break
+            im.alpha_composite(cap, (0, CAPY)); break
     if t < rows[0]["t0"] + 0.15: im.alpha_composite(Image.new("RGBA", (W, H), (0, 0, 0, int(255 * (1 - t / (rows[0]["t0"] + 0.15))))))
     return im
 
 def captions():
     caps = []
     for r in rows:
-        if r["kind"] == "choice": continue
+        if r["kind"] in ("choice", "choice2"): continue
         gs = groups(r["words"])
         for gi, g in enumerate(gs): caps.append((g[0][0], gs[gi + 1][0][0] if gi + 1 < len(gs) else min(g[-1][1] + 0.5, r["t1"]), g))
     return caps

@@ -689,9 +689,32 @@ def style_overlay(im, r, t):
         ttext(d, (W / 2, 1780), stl["series"], f_black(46), (255, 255, 255, int(230 * a)), "mm")
     vote_overlay(im, r, t)
 
+
+def sc_map(r, t):
+    p = r["par"]
+    def mk():
+        im = phone_base(p.get("clock", "02:40")); header(im, p.get("title", "Локатор"), p.get("sub", ""), p.get("av"))
+        mp = Image.new("RGBA", (PX1 - PX0 - 28, 1500), (34, 40, 54, 255)); d = ImageDraw.Draw(mp)
+        d.polygon([(0, 0), (520, 0), (430, 700), (0, 900)], fill=(30, 52, 40)); ttext(d, (160, 380), "лес", f_semi(40), (90, 130, 100))
+        for i in range(12):
+            x, y = 560 + (i % 3) * 140, 260 + (i // 3) * 280; d.rounded_rectangle([x, y, x + 110, y + 200], 10, fill=(52, 58, 76))
+        for x in (530, 680, 820): d.line([x, 0, x, 1500], fill=(70, 78, 98), width=14)
+        for y in (230, 510, 790, 1070, 1350): d.line([0, y, 1100, y], fill=(70, 78, 98), width=14)
+        hx, hy = p.get("home", (700, 880)); d.rounded_rectangle([hx - 60, hy - 90, hx + 60, hy + 90], 12, fill=(70, 110, 200), outline=(160, 190, 255), width=5)
+        ttext(d, (hx, hy + 130), "мой дом", f_semi(32), (170, 195, 255), "mm"); im.alpha_composite(mp, (PX0 + 14, 300)); return im
+    im = cached(("map", r["n"]), mk).copy(); a = appear(t, wt(r, p.get("at", -1)), 0.4)
+    if a > 0:
+        fx, fy = p.get("from", (200, 400)); tx, ty = p.get("to", fx and (fx, fy)); dur = p.get("move", 0)
+        k = min(1, max(0, (t - wt(r, p.get("at", -1))) / dur)) if dur else 1.0
+        x, y = fx + (tx - fx) * k, fy + (ty - fy) * k; X, Y = PX0 + 14 + x, 300 + y; d = ImageDraw.Draw(im)
+        pr = (t * 1.3) % 1; d.ellipse([X - 40 - pr * 60, Y - 40 - pr * 60, X + 40 + pr * 60, Y + 40 + pr * 60], outline=(235, 80, 80, int(200 * (1 - pr))), width=5)
+        d.polygon([(X - 34, Y - 70), (X + 34, Y - 70), (X, Y)], fill=(235, 80, 80)); im.alpha_composite(fade(avatar(p.get("pin", "girl"), 96).copy(), a), (int(X - 48), int(Y - 160)))
+        if p.get("label"): ttext(d, (X, Y + 40), p["label"], f_bold(32), (255, 255, 255), "mm")
+    return im
+
 RENDER = {"lock": sc_lock, "wake": sc_wake, "chat": sc_chat, "pinned": sc_pinned, "call": sc_call, "doors": sc_doors, "door_open": sc_door_open,
           "room": sc_room, "knock": sc_knock, "window": sc_window, "choice": sc_choice,
-          "banya": sc_banya, "vwindow": sc_vwindow, "yard": sc_yard, "wetdoor": sc_wetdoor, "face": sc_face, "choice2": sc_choice2}
+          "banya": sc_banya, "vwindow": sc_vwindow, "yard": sc_yard, "wetdoor": sc_wetdoor, "face": sc_face, "choice2": sc_choice2, "map": sc_map}
 
 # ---------------- captions ----------------
 def groups(words):

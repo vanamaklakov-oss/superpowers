@@ -1,4 +1,4 @@
-out/
+**/out/
 __pycache__/
-images/
-vo/*.p*.mp3
+**/images/
+**/vo/*.p*.mp3

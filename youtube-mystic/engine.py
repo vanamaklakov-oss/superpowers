@@ -831,7 +831,7 @@ if MODE == "stills":
 elif MODE == "build":
     out = f"{DIR}/{NAME}.mp4"; build_audio(f"{DIR}/mix.wav"); caps = captions()
     ff = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-                           "-i", f"{DIR}/mix.wav", "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
+                           "-i", f"{DIR}/mix.wav", "-c:v", "libx264", "-preset", "medium", "-crf", "21", "-maxrate", "3500k", "-bufsize", "7000k", "-pix_fmt", "yuv420p",
                            "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", out], stdin=subprocess.PIPE)
     for fi in range(int(TOTAL * FPS)): ff.stdin.write(frame(fi / FPS, caps).convert("RGB").tobytes())
     ff.stdin.close(); ff.wait(); print("done", out, round(TOTAL, 1), "s")

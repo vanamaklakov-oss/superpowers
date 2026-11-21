@@ -142,7 +142,8 @@ def sign(im, text, t):
     d.rounded_rectangle([box[0] - 40, box[1] - 30, box[2] + 40, box[3] + 30], radius=24, fill=(250, 235, 190), outline=(60, 40, 20), width=8)
     d.multiline_text((W // 2, 330), text, font=f, anchor="mm", fill=(60, 30, 20), align="center")
 
-def gag(im, kind, hand, t):
+def gag(im, kind, hand, t, sh=None):
+    sh = sh or {}
     d = ImageDraw.Draw(im)
     if kind == "flame":
         x, y = hand; f = 1 + 0.15 * math.sin(t * 30)
@@ -158,12 +159,12 @@ def gag(im, kind, hand, t):
             bd.rectangle([4, 4, 145, 65], outline=(40, 90, 40), width=5); bd.ellipse([55, 15, 95, 55], outline=(40, 90, 40), width=4); bd.text((75, 35), "$", font=ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 34), anchor="mm", fill=(30, 70, 30))
             bill = bill.rotate(a, expand=True); im.paste(bill, (int(x), int(y)), bill)
     if kind == "stamp":
-        p = min(1, t / 0.18); f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", int(170 * (1.6 - 0.6 * p)))
+        p = min(1, t / 0.18); f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", int(170 * min(1, 7 / len(sh.get("stamp_text", "ЗАКОННО"))) * (1.6 - 0.6 * p)))
         lay = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ld = ImageDraw.Draw(lay)
-        ld.rounded_rectangle([170, 640, 910, 900], radius=30, outline=(40, 170, 60, 230), width=16); ld.text((540, 770), "ЗАКОННО", font=f, anchor="mm", fill=(40, 170, 60, 230))
+        ld.rounded_rectangle([170, 640, 910, 900], radius=30, outline=(40, 170, 60, 230), width=16); ld.text((540, 770), sh.get("stamp_text", "ЗАКОННО"), font=f, anchor="mm", fill=(40, 170, 60, 230))
         lay = lay.rotate(-8, center=(540, 770)); im.paste(lay, (0, 0), lay)
     if kind == "calc":
-        f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 110); lines = ["БИЛЕТЫ: −", "ВЫИГРЫШИ: +", "= ПРИБЫЛЬ"]
+        f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 110); lines = sh.get("calc_lines", ["БИЛЕТЫ: −", "ВЫИГРЫШИ: +", "= ПРИБЫЛЬ"])
         for k, ln in enumerate(lines):
             if t > k * 0.35: ImageDraw.Draw(im).text((540, 250 + k * 150), ln, font=f, anchor="mm", fill=(255, 235, 120) if k == 2 else (255, 255, 255), stroke_width=6, stroke_fill=(20, 20, 20))
     if kind == "nozombie":
@@ -174,7 +175,7 @@ def gag(im, kind, hand, t):
         d.line([(cx - 260, cy - 260), (cx + 260, cy + 240)], fill=(220, 30, 30), width=36); d.line([(cx + 260, cy - 260), (cx - 260, cy + 240)], fill=(220, 30, 30), width=36)
     if kind == "book":
         x, y = hand; d.rectangle([x - 90, y - 140, x + 90, y + 20], fill=(150, 30, 40), outline=(30, 30, 30), width=6)
-        d.text((x, y - 60), "СОЗНАЮЩИЙ\nУМ", font=ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 34), anchor="mm", fill=(250, 230, 160), align="center")
+        d.text((x, y - 60), sh.get("book_text", "СОЗНАЮЩИЙ\nУМ"), font=ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 34), anchor="mm", fill=(250, 230, 160), align="center")
 
 # ---------------- frames ----------------
 def frame(t):
@@ -194,12 +195,12 @@ def frame(t):
         px, py = int(x - ci.width / 2), GROUND - ci.height + 20
         im.paste(ci, (px, py), ci); heads.append((x, py + hgt * 0.24, (px + ci.width * 0.5 + (0.5 if p.get("arm_r", 0) > 0 else -0.5) * ci.width * 0.6, py + hgt * 0.62)))
     if sh.get("bubble"): i, kind = sh["bubble"]; bubble(im, heads[i][0], heads[i][1], kind, t)
-    if sh.get("fx") in ("flame", "book"): gag(im, sh["fx"], heads[0][2] if heads else (540, 900), lt)
+    if sh.get("fx") in ("flame", "book"): gag(im, sh["fx"], heads[0][2] if heads else (540, 900), lt, sh)
     # camera: push-in from zoom*0.94 to zoom over the shot, centred on (fx, fy)
     z0, fx, fy = sh["cam"]; z = z0 * (0.94 + 0.06 * min(1, lt / max(0.4, dur)))
     cw, ch = W / z, H / z; x0 = min(max(0, fx - cw / 2), W - cw); y0 = min(max(0, fy - ch / 2), H - ch)
     im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
-    if sh.get("fx") in ("ouch", "nozombie", "money", "stamp", "calc"): gag(im, sh["fx"], None, lt)     # screen space: never cropped by the camera
+    if sh.get("fx") in ("ouch", "nozombie", "money", "stamp", "calc"): gag(im, sh["fx"], None, lt, sh)     # screen space: never cropped by the camera
     if sh.get("sign"): sign(im, sh["sign"], lt)
     if lt < 0.07: im = im.filter(ImageFilter.GaussianBlur(float(10 * (1 - lt / 0.07))))   # snap on the cut
     # one-word caption

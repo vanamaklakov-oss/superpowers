@@ -18,7 +18,7 @@ SCENES = [
     dict(bg="office", cast=[(O, 540, dict(expr="angry", rage=0.6, steam=True, talk=True))], cam=(1.9, 540, 900))]),
  (5, "Тогда власти объявили награду: один цент за каждый крысиный хвост.", [
     dict(bg="office", cast=[(O, 540, dict(expr="talk", talk=True, arm_l=80))], cam=(1.3, 540, 1050), sign="1 ЦЕНТ\nЗА ХВОСТ"),
-    dict(bg="office", cast=[(O, 540, dict(expr="smug"))], cam=(1.9, 540, 900), fx="calc")]),
+    dict(bg="office", cast=[(O, 540, dict(expr="smug"))], cam=(1.9, 540, 900), fx="calc", calc_lines=["1 ХВОСТ", "= 1 ЦЕНТ", "= ПОБЕДА?"])]),
  (6, "Местные жители взялись за дело с огромным энтузиазмом. Хвосты несли и несли.", [
     dict(bg="market", cast=[(V, 330, dict(expr="happy", arm_r=140)), (W, 750, dict(expr="happy", arm_l=140))], cam=(1.1, 540, 1000)),
     dict(bg="office", cast=[(O, 330, dict(expr="happy", arm_l=150, arm_r=150)), (V, 750, dict(expr="smug", arm_l=90))], cam=(1.2, 540, 1000), fx="money")]),
@@ -32,7 +32,7 @@ SCENES = [
     dict(bg="farm", cast=[(O, 540, dict(expr="shock", sweat=True))], cam=(1.3, 540, 1050)),
     dict(bg="farm", cast=[(O, 540, dict(expr="angry", rage=0.9, steam=True))], cam=(2.0, 540, 900))]),
  (10, "Награду отменили. Деньги потратили, а крыс в городе меньше не стало.", [
-    dict(bg="office", cast=[(O, 540, dict(expr="worried", talk=True))], cam=(1.3, 540, 1050), fx="stamp"),
+    dict(bg="office", cast=[(O, 540, dict(expr="worried", talk=True))], cam=(1.3, 540, 1050), fx="stamp", stamp_text="ОТМЕНЕНО"),
     dict(bg="sewer", cast=[], cam=(1.7, 540, 950))]),
  (11, "Экономисты называют это эффектом кобры: если платить за проблему, её начнут разводить.", [
     dict(bg="dark", cast=[(O, 540, dict(expr="worried"))], cam=(1.2, 540, 1050), sign="ЭФФЕКТ\nКОБРЫ"),

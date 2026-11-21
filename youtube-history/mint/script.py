@@ -16,7 +16,7 @@ SCENES = [
     dict(bg="office", cast=[(O, 540, dict(expr="talk", talk=True, arm_l=80))], cam=(1.3, 540, 1050), sign="ДОСТАВКА\nБЕСПЛАТНО"),
     dict(bg="office", cast=[(O, 540, dict(expr="happy", arm_l=150, arm_r=150))], cam=(1.2, 540, 1050))]),
  (5, "Любители авиамиль сразу всё посчитали. Тысяча долларов на карте — это тысяча миль.", [
-    dict(bg="home", cast=[(T, 540, dict(expr="neutral", arm_r=90))], cam=(1.3, 540, 1100), fx="calc"),
+    dict(bg="home", cast=[(T, 540, dict(expr="neutral", arm_r=90))], cam=(1.3, 540, 1100), fx="calc", calc_lines=["$1000 НА КАРТУ", "= 1000 МИЛЬ", "= ПЕРЕЛЁТ"]),
     dict(bg="home", cast=[(T, 540, dict(expr="smug"))], cam=(2.0, 540, 880), bubble=(0, "on"))]),
  (6, "Они заказывали коробки с монетами, получали их домой и, не открывая, несли в банк.", [
     dict(bg="home", cast=[(T, 540, dict(expr="happy", arm_r=130))], cam=(1.2, 540, 1050)),
@@ -31,7 +31,7 @@ SCENES = [
     dict(bg="home", cast=[(T, 540, dict(expr="happy", arm_l=150, arm_r=150))], cam=(1.2, 540, 1050), fx="money")]),
  (10, "В две тысячи одиннадцатом году Монетный двор заметил схему и запретил платить картами.", [
     dict(bg="office", cast=[(O, 540, dict(expr="angry", rage=0.8, steam=True, talk=True))], cam=(1.7, 540, 940)),
-    dict(bg="office", cast=[(O, 540, dict(expr="angry"))], cam=(1.25, 540, 1050), fx="stamp")]),
+    dict(bg="office", cast=[(O, 540, dict(expr="angry"))], cam=(1.25, 540, 1050), fx="stamp", stamp_text="ЗАПРЕЩЕНО")]),
  (11, "А потом перестал чеканить такие монеты для обращения. На складах их скопилось больше чем на миллиард долларов.", [
     dict(bg="vault", cast=[(O, 540, dict(expr="shock", sweat=True))], cam=(1.3, 540, 1050), sign="$1 000 000 000+"),
     dict(bg="vault", cast=[(O, 540, dict(expr="worried"))], cam=(1.9, 540, 900))]),

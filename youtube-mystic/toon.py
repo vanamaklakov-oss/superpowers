@@ -18,13 +18,14 @@ DIR = os.path.abspath(sys.argv[1]); MODE = sys.argv[2] if len(sys.argv) > 2 else
 spec = importlib.util.spec_from_file_location("story", f"{DIR}/story.py"); ST = importlib.util.module_from_spec(spec); spec.loader.exec_module(ST)
 SCENES, YELLOW, RED = ST.SCENES, {w.lower() for w in ST.YELLOW}, {w.lower() for w in ST.RED}
 VOICE, RATE, PITCH = getattr(ST, "VOICE", ("ru-RU-DmitryNeural", 10, 4))
+STY = getattr(ST, "STYLE", {}); W, H = STY.get("size", (W, H)); CAP = F("Inter-Black", STY.get("capsize", 100))
 
 # ---------------- voice ----------------
 def tts():
     import asyncio, ssl, time, edge_tts, edge_tts.communicate as c
     c._SSL_CTX = ssl.create_default_context(cafile="/root/.ccr/ca-bundle.crt"); VO = f"{DIR}/vo"; os.makedirs(VO, exist_ok=True)
     def dur(f): return float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f]))
-    def say(text, out):
+    def say(text, out, VOICE=VOICE, RATE=RATE, PITCH=PITCH):
         for dr in (0, 1, -1, 2, 0, -2, 3):
             async def go():
                 com = edge_tts.Communicate(text, voice=VOICE, rate=f"{RATE + dr:+d}%", pitch=f"{PITCH:+d}Hz", boundary="WordBoundary"); ws = []
@@ -38,28 +39,30 @@ def tts():
                 if ws and os.path.getsize(out) > 2000: return ws
             except Exception: time.sleep(6)
         raise RuntimeError(f"tts failed: {text}")
-    for n, text, _ in SCENES:
-        out = f"{VO}/{n:02d}.mp3"; vs = [VOICE, RATE, PITCH]
+    for n, text, _, *ex in SCENES:
+        out = f"{VO}/{n:02d}.mp3"; vs = list((ex[0] if ex else {}).get("voice", (VOICE, RATE, PITCH)))
         if os.path.exists(out + ".json"):
             j = json.load(open(out + ".json"))
             if j.get("text") == text and j.get("voice") == vs: continue
         parts = [s for s in re.split(r"(?<=[.!?])\s+", text) if s]; files, words, t = [], [], 0.0
         for i, s in enumerate(parts):
-            pf = f"{VO}/{n:02d}.p{i}.mp3"; ws = say(s, pf); files.append(pf); words += [{**w, "s": w["s"] + t} for w in ws]; t += dur(pf)
+            pf = f"{VO}/{n:02d}.p{i}.mp3"; ws = say(s, pf, *vs); files.append(pf); words += [{**w, "s": w["s"] + t} for w in ws]; t += dur(pf)
         lst = f"{VO}/{n:02d}.txt"; open(lst, "w").write("".join(f"file '{f}'\n" for f in files))
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out], check=True)
         for f in files + [lst]: os.remove(f)
         json.dump({"text": text, "voice": vs, "dur": dur(out), "words": words}, open(out + ".json", "w"), ensure_ascii=False)
         print(n, "ok", round(dur(out), 2), flush=True)
 
-def pcm(p):
-    raw = subprocess.check_output(["ffmpeg", "-loglevel", "error", "-i", p, "-ac", "1", "-ar", str(SR), "-f", "s16le", "-"])
+FX = {"ghost": "aecho=0.8:0.75:70|160:0.45|0.3,lowpass=f=3000,volume=1.1", "whisper": "highpass=f=300,aecho=0.6:0.5:40:0.3,volume=1.2", "phone": "highpass=f=400,lowpass=f=3200,volume=1.3"}
+def pcm(p, fx=None, tempo=1.0):
+    af = ",".join(([FX[fx]] if fx else []) + ([f"atempo={tempo}"] if tempo != 1.0 else []))
+    raw = subprocess.check_output(["ffmpeg", "-loglevel", "error", "-i", p] + (["-af", af] if af else []) + ["-ac", "1", "-ar", str(SR), "-f", "s16le", "-"])
     return np.frombuffer(raw, np.int16).astype(np.float32) / 32768
 
 def check():
     from faster_whisper import WhisperModel
     m = WhisperModel("small", compute_type="int8")
-    for n, text, _ in SCENES:
+    for n, text, _, *ex in SCENES:
         a = pcm(f"{DIR}/vo/{n:02d}.mp3")[::3]
         s, _ = m.transcribe(a, language="ru"); got = " ".join(x.text.strip() for x in s)
         norm = lambda z: re.sub(r"[^а-яё ]", "", z.lower().replace("ё", "е")).split()
@@ -74,10 +77,10 @@ def trim(a):
     env = np.convolve(np.abs(a), np.ones(480) / 480, "same"); on = np.where(env > 0.01)[0]
     s, e = max(on[0] - 720, 0), min(on[-1] + 1800, len(a)); return a[s:e], s / SR
 rows, t = [], 0.25
-for n, text, shots in SCENES:
-    a, lead = trim(pcm(f"{DIR}/vo/{n:02d}.mp3")); meta = json.load(open(f"{DIR}/vo/{n:02d}.mp3.json"))
-    words = [(t + w["s"] - lead, t + w["s"] - lead + w["d"], w["w"]) for w in meta["words"]]
-    rows.append({"n": n, "t0": t, "a": a, "words": words, "shots": shots}); t += len(a) / SR + 0.08
+for n, text, shots, *ex in SCENES:
+    ex = ex[0] if ex else {}; TP = STY.get("tempo", 1.0); a, lead = trim(pcm(f"{DIR}/vo/{n:02d}.mp3", ex.get("fx"), TP)); meta = json.load(open(f"{DIR}/vo/{n:02d}.mp3.json"))
+    words = [(t + w["s"] / TP - lead, t + (w["s"] + w["d"]) / TP - lead, w["w"]) for w in meta["words"]]
+    rows.append({"n": n, "t0": t, "a": a, "words": words, "shots": shots}); t += len(a) / SR + 0.08 + ex.get("hold", STY.get("gap", 0))
 TOTAL = t + 1.4
 def wt(r, i):
     if i is None: return r["t0"]
@@ -125,8 +128,8 @@ def cached(key, fn):
     return C[key]
 
 # ---------- персонаж «фонарик» ----------
-def bean(body=(70, 110, 190), eyes="dot", mouth="smile", arms="down", legs="stand", cap=False, sweat=False, flip=False, s=1.0, look=0):
-    key = ("bean", body, eyes, mouth, arms, legs, cap, sweat, flip, s, look)
+def bean(body=(70, 110, 190), eyes="dot", mouth="smile", arms="down", legs="stand", cap=False, sweat=False, flip=False, s=1.0, look=0, hair=None, glasses=False, hcol=(60, 40, 30)):
+    key = ("bean", body, eyes, mouth, arms, legs, cap, sweat, flip, s, look, hair, glasses, hcol)
     if key in C: return C[key]
     w, h = int(340 * s), int(560 * s)
     def dr(d, k):
@@ -148,7 +151,14 @@ def bean(body=(70, 110, 190), eyes="dot", mouth="smile", arms="down", legs="stan
         d.rounded_rectangle(L(100, 205, 240, 395), radius=int(62 * K), fill=body, outline=INK, width=lw)
         lt = tuple(min(255, c + 38) for c in body); d.rounded_rectangle(L(118, 222, 150, 330), radius=int(16 * K), fill=lt)
         # голова
+        if hair == "long": d.rounded_rectangle(L(hx - hr - 14, hy - hr - 8, hx + hr + 14, hy + 120), radius=int(70 * K), fill=hcol, outline=INK, width=lw)
+        if hair == "scarf": d.polygon(L(hx - hr - 20, hy - 10, hx + hr + 20, hy - 10, hx + 40, hy + 120, hx - 40, hy + 120), fill=hcol, outline=INK, width=lw)
         d.ellipse(L(hx - hr, hy - hr, hx + hr, hy + hr), fill=WHITE, outline=INK, width=lw)
+        if hair == "long": d.chord(L(hx - hr, hy - hr - 6, hx + hr, hy + 10), 180, 360, fill=hcol, outline=INK, width=lw)
+        if hair == "short": d.chord(L(hx - hr, hy - hr - 10, hx + hr, hy - 10), 180, 360, fill=hcol, outline=INK, width=lw)
+        if hair == "scarf":
+            d.chord(L(hx - hr - 12, hy - hr - 14, hx + hr + 12, hy + 40), 180, 360, fill=hcol, outline=INK, width=lw)
+            for i in range(5): d.ellipse(L(hx - 70 + i * 34, hy - 60 - (i % 2) * 18, hx - 58 + i * 34, hy - 48 - (i % 2) * 18), fill=WHITE)
         d.ellipse(L(hx - hr + 22, hy - hr + 18, hx - hr + 62, hy - hr + 48), fill=(255, 255, 255))
         ex = 32; ey = hy - 8; lx = look * 10
         if eyes == "dot":
@@ -164,14 +174,22 @@ def bean(body=(70, 110, 190), eyes="dot", mouth="smile", arms="down", legs="stan
             for sx in (-1, 1):
                 d.ellipse(L(hx + sx * ex - 11, ey - 10, hx + sx * ex + 11, ey + 18), fill=INK)
                 d.line(L(hx + sx * ex - 26, ey - 36 + (sx * 10), hx + sx * ex + 26, ey - 36 - (sx * 10)), fill=INK, width=int(8 * K))
+        elif eyes == "void":
+            for sx in (-1, 1): d.ellipse(L(hx + sx * ex - 24, ey - 26, hx + sx * ex + 24, ey + 26), fill=(6, 4, 8))
         elif eyes == "closed":
             for sx in (-1, 1): d.arc(L(hx + sx * ex - 18, ey - 10, hx + sx * ex + 18, ey + 18), 200, 340, fill=INK, width=int(7 * K))
         my = hy + 40
         if mouth == "smile": d.arc(L(hx - 30, my - 26, hx + 30, my + 18), 20, 160, fill=INK, width=int(7 * K))
         elif mouth == "line": d.line(L(hx - 22, my, hx + 22, my), fill=INK, width=int(7 * K))
         elif mouth == "frown": d.arc(L(hx - 26, my, hx + 26, my + 34), 200, 340, fill=INK, width=int(7 * K))
+        elif mouth == "grin":
+            d.chord(L(hx - 52, my - 34, hx + 52, my + 34), 0, 180, fill=(10, 6, 8), outline=INK, width=int(5 * K))
+            for i in range(7): d.line(L(hx - 42 + i * 14, my, hx - 42 + i * 14, my + 14), fill=WHITE, width=int(4 * K))
         elif mouth == "o": d.ellipse(L(hx - 14, my - 12, hx + 14, my + 20), fill=INK)
         elif mouth == "scream": d.ellipse(L(hx - 26, my - 14, hx + 26, my + 40), fill=INK); d.ellipse(L(hx - 14, my + 14, hx + 14, my + 36), fill=(220, 80, 90))
+        if glasses:
+            for sx in (-1, 1): d.ellipse(L(hx + sx * ex - 26, ey - 24, hx + sx * ex + 26, ey + 24), outline=INK, width=int(6 * K))
+            d.line(L(hx - 8, ey, hx + 8, ey), fill=INK, width=int(5 * K))
         if cap:
             d.chord(L(hx - 86, hy - 100, hx + 86, hy + 30), 180, 360, fill=(32, 44, 78), outline=INK, width=lw)
             d.rounded_rectangle(L(hx - 98, hy - 40, hx + 98, hy - 24), radius=int(8 * K), fill=(24, 30, 52), outline=INK, width=int(5 * K))
@@ -493,6 +511,7 @@ def sh_legend(p, lt, D):
         st = st.rotate(12, expand=True, resample=Image.BICUBIC); st = st.resize((int(st.width * s), int(st.height * s)))
         im.alpha_composite(st, (int(540 - st.width / 2), int(1000 - st.height / 2)))
     return im
+if os.path.exists(f"{DIR}/shots.py"): exec(open(f"{DIR}/shots.py").read(), globals())
 KINDS = {k[3:]: v for k, v in globals().items() if k.startswith("sh_")}
 
 # ---------------- камера и кадр ----------------
@@ -519,7 +538,7 @@ CAPC = {}
 def caption(g):
     if id(g) in CAPC: return CAPC[id(g)]
     toks = [re.sub(r"[^\wёЁ\-]", "", w[2]) for w in g]; im = Image.new("RGBA", (W, 300), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-    lines = [toks] if d.textlength(" ".join(toks).upper(), font=CAP) < 1000 else [[x] for x in toks]
+    lines = [toks] if d.textlength(" ".join(toks).upper(), font=CAP) < W - 80 else [[x] for x in toks]
     for li, ln in enumerate(lines):
         tw = sum(d.textlength(x.upper(), font=CAP) for x in ln) + 28 * (len(ln) - 1); x = (W - tw) / 2; y = 40 + li * 118
         for wd in ln:
@@ -532,7 +551,7 @@ def captions():
         gs = groups(r["words"])
         for gi, g in enumerate(gs): caps.append((g[0][0], gs[gi + 1][0][0] if gi + 1 < len(gs) else g[-1][1] + 0.25, g))
     return caps
-CAPY = getattr(ST, "STYLE", {}).get("capy", 1540)
+CAPY = STY.get("capy", 1540)
 def frame(t, caps):
     s = next(x for x in SHOTS if x["t0"] <= t < x["t1"]) if t < TOTAL - 1e-6 else SHOTS[-1]
     lt, D = t - s["t0"], s["t1"] - s["t0"]
@@ -567,12 +586,33 @@ def build_audio(path):
     def steps(t0, t1):
         a = t0
         while a < t1: add(noise(0.06, 20) * np.hanning(int(0.06 * SR)).astype(np.float32) * 3, a, 0.4); a += 0.28
-    SFX = {"wave": wave_s, "thud": thud, "ding": ding, "horn": horn, "flip": flip, "pop": pop, "thunder": thunder}
+    def knock(at):
+        for o in (0, 0.28, 0.56):
+            tt = np.arange(int(0.25 * SR)) / SR; sg = np.sin(2 * np.pi * 95 * tt * (1 - tt)) * np.exp(-tt * 22)
+            add((sg + noise(0.25, 24) * np.exp(-tt * 60) * 1.5).astype(np.float32), at + o, 0.8)
+    def creak(at): tt = np.arange(int(1.2 * SR)) / SR; f = 180 + 60 * np.sin(tt * 5); add((np.sign(np.sin(2 * np.pi * np.cumsum(f) / SR)) * np.sin(np.pi * tt / 1.2) * (0.5 + 0.5 * np.sin(tt * 90))).astype(np.float32), at, 0.06)
+    def ring(at):
+        tt = np.arange(int(2.0 * SR)) / SR; add(((np.sin(2 * np.pi * 880 * tt) + np.sin(2 * np.pi * 1100 * tt)) * (tt % 1.0 < 0.7) * (np.sin(2 * np.pi * 20 * tt) > 0)).astype(np.float32), at, 0.06)
+    def engine(at): n = noise(3.0, 60); tt = np.arange(len(n)) / SR; add((n * 4 + np.sin(2 * np.pi * 45 * tt) * 0.5).astype(np.float32) * np.clip(tt / 0.5, 0, 1) * np.clip((3 - tt) / 1, 0, 1), at, 0.25)
+    def sting(at):
+        tt = np.arange(int(2.5 * SR)) / SR; add(((np.sin(2 * np.pi * 40 * tt) * 1.2 + noise(2.5, 4) * 0.3 + np.sin(2 * np.pi * 311 * tt) * 0.3 + np.sin(2 * np.pi * 330 * tt) * 0.3) * np.exp(-tt * 1.4)).astype(np.float32), at, 0.45)
+    def tick(t0, t1):
+        a = t0
+        while a < t1: add(noise(0.02, 2) * 2, a, 0.15); a += 0.5
+    def heart(t0, t1):
+        tt = np.arange(int(0.18 * SR)) / SR; th = (np.sin(2 * np.pi * 52 * tt) * np.exp(-tt * 25)).astype(np.float32); a = t0
+        while a < t1: add(th, a, 0.6); add(th, a + 0.22, 0.45); a += 0.75
+    def birds(at):
+        for k in range(5):
+            tt = np.arange(int(0.12 * SR)) / SR; add((np.sin(2 * np.pi * (2600 + 900 * np.sin(tt * 60)) * tt) * np.hanning(len(tt))).astype(np.float32), at + k * 0.35 + rng.random() * 0.1, 0.05)
+    SFX = {"knock": knock, "creak": creak, "ring": ring, "engine": engine, "sting": sting, "birds": birds, "wave": wave_s, "thud": thud, "ding": ding, "horn": horn, "flip": flip, "pop": pop, "thunder": thunder}
     for s in SHOTS:
         if s["i"] > 0: whoosh(s["t0"])
         for name in (s.get("sfx") or "").split():
             nm, _, off = name.partition("@"); at = s["t0"] + float(off or 0)
             if nm == "steps": steps(s["t0"], s["t1"])
+            elif nm == "tick": tick(s["t0"], s["t1"])
+            elif nm == "heart": heart(s["t0"], s["t1"])
             else: SFX[nm](at)
     wind = noise(TOTAL + 0.1, 90)[:N] * 9 * (0.6 + 0.4 * np.sin(2 * np.pi * 0.09 * x)); rainn = noise(TOTAL + 0.1, 2)[:N] * 0.05
     pulse = np.zeros(N, np.float32); tt = np.arange(int(0.25 * SR)) / SR; note = np.exp(-tt * 9)
@@ -581,15 +621,17 @@ def build_audio(path):
         f = seq[i % 8]; s = (np.sin(2 * np.pi * f * tt) + 0.4 * np.sin(2 * np.pi * f * 2 * tt)) * note
         j = int(b * SR); k = min(N, j + len(s)); pulse[j:k] += s[:k - j].astype(np.float32); b += 0.25; i += 1
     env = np.convolve(np.abs(voice), np.ones(2400) / 2400, "same"); duck = 1 - 0.5 * np.clip(env / 0.08, 0, 1)
+    if STY.get("mood") == "horror":
+        lfo = 0.6 + 0.4 * np.sin(2 * np.pi * 0.11 * x); pulse = (np.sin(2 * np.pi * 55 * x) + np.sin(2 * np.pi * 55.35 * x) + 0.5 * np.sin(2 * np.pi * 82.6 * x) + 0.25 * np.sin(2 * np.pi * 116.6 * x + np.sin(x * 0.7))) * lfo * 0.7; rainn = rainn * 0
     bed = (wind * 0.03 + rainn + pulse * 0.07) * duck * np.clip(x / 0.5, 0, 1) * np.clip((TOTAL - x) / 1.0, 0, 1)
     mix = np.tanh((voice + bed + fx) * 1.05) * 0.95
     with wave.open(path, "wb") as w: w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((mix * 32767).astype(np.int16).tobytes())
 
 if MODE == "stills":
     os.makedirs(f"{DIR}/stills", exist_ok=True); caps = captions(); ims = []
-    for s in SHOTS: ims.append(frame(s["t0"] + (s["t1"] - s["t0"]) * 0.7, caps).convert("RGB").resize((270, 480)))
-    cols = 8; sheet = Image.new("RGB", (270 * cols, 480 * math.ceil(len(ims) / cols)))
-    for i, im in enumerate(ims): sheet.paste(im, ((i % cols) * 270, (i // cols) * 480))
+    for s in SHOTS: ims.append(frame(s["t0"] + (s["t1"] - s["t0"]) * 0.7, caps).convert("RGB").resize((tw := 270 if H > W else 384, th := 480 if H > W else 216)))
+    cols = 8 if H > W else 6; sheet = Image.new("RGB", (tw * cols, th * math.ceil(len(ims) / cols)))
+    for i, im in enumerate(ims): sheet.paste(im, ((i % cols) * tw, (i // cols) * th))
     sheet.save(f"{DIR}/stills/sheet.jpg"); print("stills", f"{DIR}/stills/sheet.jpg", round(TOTAL, 1), "s,", len(SHOTS), "планов,", round(len(SHOTS) / TOTAL * 10, 1), "склеек/10с")
 elif MODE == "build":
     out = f"{DIR}/{NAME}.mp4"; build_audio(f"{DIR}/mix.wav"); caps = captions()

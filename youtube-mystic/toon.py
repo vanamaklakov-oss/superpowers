@@ -553,11 +553,20 @@ def caption(g):
     CAPC[id(g)] = im; return im
 SUBF = F("Inter-Bold", 50); NAMEF = F("Inter-Black", 34)
 WHO = getattr(ST, "WHO", {})
+def punct(r):
+    toks = [x for x in SC_TEXT.get(r["n"], "").split() if re.search(r"[\wё]", x, re.I)]; cl = lambda z: re.sub(r"[^\wё]", "", z.lower()); out, j = [], 0
+    for w in r["words"]:
+        k = j
+        while k < len(toks) and not cl(toks[k]).startswith(cl(w[2])[:3]): k += 1
+        if k < len(toks): out.append((w[0], w[1], toks[k])); j = k + 1
+        else: out.append(w)
+    return out
+SC_TEXT = {sc[0]: sc[1] for sc in SCENES}
 def phrase_caps():
     caps = []
     for r in rows:
         ch, cur = [], []
-        for w in r["words"]:
+        for w in punct(r):
             cur.append(w)
             if re.search(r"[.!?…]$", w[2]) or len(" ".join(x[2] for x in cur)) > 60: ch.append(cur); cur = []
         if cur: ch.append(cur)

@@ -308,6 +308,7 @@ def sc_pinned(r, t):
 
 def sc_call(r, t):
     p = r["par"]; lt = t - r["t0"]; acc = wt(r, p["accept"]) if "accept" in p else 1e9
+    if acc < r["t0"]: acc = r["t0"] - p.get("elapsed", 12)
     im = phone_base(p.get("clock", "03:20")); im.alpha_composite(grad((40, 50, 90), (18, 20, 36), PX1 - PX0 - 28, PY1 - PY0 - 200), (PX0 + 14, PY0 + 110))
     d = ImageDraw.Draw(im); on = t >= acc
     if not on:

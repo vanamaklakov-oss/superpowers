@@ -101,6 +101,9 @@ def bg_cinema():
     for k in range(7): d.rectangle([60 + k * 140, 1500, 160 + k * 140, 1600], fill=(120, 20, 30))
     return im
 BGS = dict(street=bg_street(), dark=bg_dark(), lab=bg_lab(), library=bg_library(), cinema=bg_cinema())
+for k in BGS:                      # generated 3D backgrounds (gen_cf.py) replace the code-drawn ones when present
+    p = f"{HERE}/bgs/{k}.jpg"
+    if os.path.exists(p): BGS[k] = Image.open(p).convert("RGB").resize((W, H))
 
 # ---------------- overlays ----------------
 def bubble(im, hx, hy, kind, t):

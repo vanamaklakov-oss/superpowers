@@ -712,9 +712,37 @@ def sc_map(r, t):
         if p.get("label"): ttext(d, (X, Y + 40), p["label"], f_bold(32), (255, 255, 255), "mm")
     return im
 
+
+def sc_lift(r, t):
+    p = r["par"]; lt = t - r["t0"]
+    def mk():
+        im = grad((64, 74, 70), (40, 46, 44)); d = ImageDraw.Draw(im); d.rectangle([0, 1650, W, H], fill=(58, 54, 50))
+        for x in range(0, W, 90): d.line([x, 1650, x + (x - W / 2) * 0.3, H], fill=(46, 42, 40), width=4)
+        d.rectangle([0, 1000, W, 1010], fill=(46, 54, 50)); d.rectangle([200, 400, 880, 1660], fill=(40, 40, 44), outline=OUTL, width=8)
+        d.rounded_rectangle([930, 950, 1010, 1110], 12, fill=(150, 152, 160), outline=OUTL, width=5); d.ellipse([948, 1000, 992, 1044], fill=(255, 200, 80), outline=OUTL, width=4)
+        d.rectangle([430, 250, 650, 370], fill=(12, 10, 10), outline=OUTL, width=6); return im
+    im = cached("lift", mk).copy(); d = ImageDraw.Draw(im)
+    op = appear(t, wt(r, p["open"]), 2.0) if "open" in p else (1.0 if p.get("opened") else 0.0)
+    if op > 0:
+        d.rectangle([224, 424, 856, 1640], fill=(4, 4, 6))
+        if p.get("eyes") is not None and t >= wt(r, p["eyes"]):
+            ea = appear(t, wt(r, p["eyes"]), 1.5); c = (int(230 * ea), int(230 * ea), int(200 * ea))
+            d.ellipse([500, 900, 524, 916], fill=c); d.ellipse([556, 900, 580, 916], fill=c)
+    pw = 316 * (1 - op)
+    for x0, sgn in ((224, 1), (856, -1)):
+        xa, xb = (x0, x0 + pw) if sgn > 0 else (x0 - pw, x0)
+        if pw > 2:
+            d.rectangle([xa, 424, xb, 1640], fill=(150, 154, 162), outline=OUTL, width=4)
+            for k in range(6): d.line([xa + 10 + k * (pw / 6), 440, xa + 10 + k * (pw / 6), 1620], fill=(136, 140, 148), width=3)
+    fl = [x for x in p.get("floors", []) if t >= wt(r, x[0])]; fl = fl[-1][1] if fl else p.get("floor", "1")
+    ttext(d, (540, 312), fl, f_black(96), (255, 50, 40) if fl == "0" else (255, 120, 60), "mm")
+    flick = 1.0 if (int(lt * 8) * 7919) % 11 else 0.4
+    im.alpha_composite(Image.new("RGBA", (W, H), (0, 0, 0, int(60 + 90 * (1 - flick)))))
+    return zoom(im, 1.0 + 0.08 * lt / (r["t1"] - r["t0"]), 0.5, 0.5)
+
 RENDER = {"lock": sc_lock, "wake": sc_wake, "chat": sc_chat, "pinned": sc_pinned, "call": sc_call, "doors": sc_doors, "door_open": sc_door_open,
           "room": sc_room, "knock": sc_knock, "window": sc_window, "choice": sc_choice,
-          "banya": sc_banya, "vwindow": sc_vwindow, "yard": sc_yard, "wetdoor": sc_wetdoor, "face": sc_face, "choice2": sc_choice2, "map": sc_map}
+          "banya": sc_banya, "vwindow": sc_vwindow, "yard": sc_yard, "wetdoor": sc_wetdoor, "face": sc_face, "choice2": sc_choice2, "map": sc_map, "lift": sc_lift}
 
 # ---------------- captions ----------------
 def groups(words):

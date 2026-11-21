@@ -26,10 +26,10 @@ SCENES = [
     dict(bg="truck", cast=[(S, 540, dict(expr="worried", sweat=True, lean=6))], cam=(1.4, 540, 1000)),
     dict(bg="truck", cast=[(S, 540, dict(expr="shock", lean=-6))], cam=(1.8, 540, 930))]),
  (8, "Через неделю операцию свернули. Потом начали снова и воевали ещё почти месяц.", [
-    dict(bg="camp", cast=[(M, 540, dict(expr="worried"))], cam=(1.3, 540, 1050), fx="stamp"),
+    dict(bg="camp", cast=[(M, 540, dict(expr="worried"))], cam=(1.3, 540, 1050), fx="stamp", stamp_text="ОТБОЙ"),
     dict(bg="wheat", cast=[(M, 540, dict(expr="angry", rage=0.7, steam=True))], cam=(1.7, 540, 950))]),
  (9, "Ушли почти все патроны. А по официальным данным, удалось подстрелить меньше тысячи птиц.", [
-    dict(bg="camp", cast=[(S, 540, dict(expr="worried", sweat=True))], cam=(1.3, 540, 1050), fx="calc"),
+    dict(bg="camp", cast=[(S, 540, dict(expr="worried", sweat=True))], cam=(1.3, 540, 1050), fx="calc", calc_lines=["ПАТРОНЫ: ~10 000", "ЭМУ: < 1000", "= ПРОВАЛ"]),
     dict(bg="emus", cast=[], cam=(1.6, 540, 960), sign="986")]),
  (10, "Майор признал: эму неуязвимы, как танки.", [
     dict(bg="camp", cast=[(M, 540, dict(expr="shock", talk=True, arm_l=110))], cam=(2.0, 540, 900))]),

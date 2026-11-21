@@ -13,12 +13,12 @@ SCENES = [
     dict(bg="palace", cast=[(K, 540, dict(expr="angry", rage=0.6, steam=True))], cam=(1.9, 540, 900))]),
  (3, "Монеты в стране испорчены: мошенники срезали серебро с краёв. Перечеканка стоит огромных денег.", [
     dict(bg="treasury", cast=[(K, 540, dict(expr="shock", sweat=True))], cam=(1.4, 540, 1000)),
-    dict(bg="treasury", cast=[(K, 540, dict(expr="worried"))], cam=(1.2, 540, 1050), fx="calc")]),
+    dict(bg="treasury", cast=[(K, 540, dict(expr="worried"))], cam=(1.2, 540, 1050), fx="calc", calc_lines=["СРЕЗАЛИ СЕРЕБРО", "= ПЕРЕЧЕКАНКА", "= НУЖЕН НАЛОГ"])]),
  (4, "И придумали налог, который легко проверить снаружи.", [
     dict(bg="palace", cast=[(K, 540, dict(expr="smug", arm_r=90))], cam=(1.8, 540, 920), bubble=(0, "on"))]),
  (5, "Сборщику не нужно входить в дом. Встал на улице, посчитал окна и выписал счёт.", [
     dict(bg="street", cast=[(X, 540, dict(expr="neutral", arm_r=110))], cam=(1.3, 540, 1050)),
-    dict(bg="street", cast=[(X, 330, dict(expr="smug", talk=True)), (V, 750, dict(expr="shock"))], cam=(1.15, 540, 1000), fx="stamp")]),
+    dict(bg="street", cast=[(X, 330, dict(expr="smug", talk=True)), (V, 750, dict(expr="shock"))], cam=(1.15, 540, 1000), fx="stamp", stamp_text="ОПЛАТИТЬ")]),
  (6, "Чем больше окон, тем больше платишь. Больше десяти — дороже. Больше двадцати — ещё дороже.", [
     dict(bg="mansion", cast=[(R, 540, dict(expr="worried", sweat=True))], cam=(1.3, 540, 1050), sign="10+\n20+"),
     dict(bg="mansion", cast=[(R, 540, dict(expr="angry", rage=0.8, steam=True))], cam=(2.0, 540, 900))]),

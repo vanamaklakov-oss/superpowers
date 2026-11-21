@@ -35,11 +35,13 @@ def tts():
                         elif ch["type"] == "WordBoundary": ws.append({"w": ch["text"], "s": ch["offset"] / 1e7, "d": ch["duration"] / 1e7})
                 return ws
             try:
-                ws = asyncio.run(go())
+                ws = asyncio.run(asyncio.wait_for(go(), 45))
                 if ws and os.path.getsize(out) > 2000: return ws
             except Exception: time.sleep(6)
         raise RuntimeError(f"tts failed: {text}")
     for n, text, _, *ex in SCENES:
+        if not text: continue
+        if os.environ.get("SHARD") and n % 2 != int(os.environ["SHARD"]): continue
         out = f"{VO}/{n:02d}.mp3"; vs = list((ex[0] if ex else {}).get("voice", (VOICE, RATE, PITCH)))
         if os.path.exists(out + ".json"):
             j = json.load(open(out + ".json"))
@@ -63,6 +65,7 @@ def check():
     from faster_whisper import WhisperModel
     m = WhisperModel("small", compute_type="int8")
     for n, text, _, *ex in SCENES:
+        if not text: continue
         a = pcm(f"{DIR}/vo/{n:02d}.mp3")[::3]
         s, _ = m.transcribe(a, language="ru"); got = " ".join(x.text.strip() for x in s)
         norm = lambda z: re.sub(r"[^а-яё ]", "", z.lower().replace("ё", "е")).split()
@@ -78,9 +81,12 @@ def trim(a):
     s, e = max(on[0] - 720, 0), min(on[-1] + 1800, len(a)); return a[s:e], s / SR
 rows, t = [], 0.25
 for n, text, shots, *ex in SCENES:
-    ex = ex[0] if ex else {}; TP = STY.get("tempo", 1.0); a, lead = trim(pcm(f"{DIR}/vo/{n:02d}.mp3", ex.get("fx"), TP)); meta = json.load(open(f"{DIR}/vo/{n:02d}.mp3.json"))
+    ex = ex[0] if ex else {}
+    if not text:
+        rows.append({"n": n, "t0": t, "a": np.zeros(int(ex.get("silent", 2.5) * SR), np.float32), "words": [], "shots": shots, "who": None}); t += ex.get("silent", 2.5); continue
+    TP = STY.get("tempo", 1.0); a, lead = trim(pcm(f"{DIR}/vo/{n:02d}.mp3", ex.get("fx"), TP)); meta = json.load(open(f"{DIR}/vo/{n:02d}.mp3.json"))
     words = [(t + w["s"] / TP - lead, t + (w["s"] + w["d"]) / TP - lead, w["w"]) for w in meta["words"]]
-    rows.append({"n": n, "t0": t, "a": a, "words": words, "shots": shots}); t += len(a) / SR + 0.08 + ex.get("hold", STY.get("gap", 0))
+    rows.append({"n": n, "t0": t, "a": a, "words": words, "shots": shots, "who": ex.get("who")}); t += len(a) / SR + 0.08 + ex.get("hold", STY.get("gap", 0))
 TOTAL = t + 1.4
 def wt(r, i):
     if i is None: return r["t0"]
@@ -545,7 +551,34 @@ def caption(g):
             lw = wd.lower(); col = REDC if lw in RED else YEL if lw in YELLOW else WHITE
             d.text((x, y), wd.upper(), font=CAP, fill=col, stroke_width=13, stroke_fill=INK); x += d.textlength(wd.upper(), font=CAP) + 28
     CAPC[id(g)] = im; return im
+SUBF = F("Inter-Bold", 50); NAMEF = F("Inter-Black", 34)
+WHO = getattr(ST, "WHO", {})
+def phrase_caps():
+    caps = []
+    for r in rows:
+        ch, cur = [], []
+        for w in r["words"]:
+            cur.append(w)
+            if re.search(r"[.!?…]$", w[2]) or len(" ".join(x[2] for x in cur)) > 60: ch.append(cur); cur = []
+        if cur: ch.append(cur)
+        for i, g in enumerate(ch): caps.append((g[0][0], ch[i + 1][0][0] if i + 1 < len(ch) else g[-1][1] + 0.6, g, r.get("who")))
+    return caps
+def phrase_img(g, who):
+    key = ("ph", id(g))
+    if key in CAPC: return CAPC[key]
+    txt = " ".join(w[2] for w in g); d = ImageDraw.Draw(Image.new("RGB", (1, 1))); lines, cur = [], ""
+    for wd in txt.split():
+        if cur and d.textlength(cur + " " + wd, font=SUBF) > W - 520: lines.append(cur); cur = wd
+        else: cur = (cur + " " + wd).strip()
+    lines.append(cur); lh = 66; bw = max(d.textlength(l, font=SUBF) for l in lines) + 70; bh = lh * len(lines) + 34
+    im = Image.new("RGBA", (W, bh + 60), (0, 0, 0, 0)); dd = ImageDraw.Draw(im); x0 = (W - bw) / 2
+    dd.rounded_rectangle((x0, 50, x0 + bw, 50 + bh), 18, fill=(0, 0, 0, 170))
+    for i, l in enumerate(lines): dd.text((W / 2, 50 + 17 + lh * i + lh / 2), l, font=SUBF, fill=(255, 255, 255), anchor="mm")
+    if who and who in WHO:
+        nm, col = WHO[who]; tw = dd.textlength(nm, font=NAMEF); dd.rounded_rectangle((x0, 4, x0 + tw + 36, 52), 12, fill=col + (255,)); dd.text((x0 + 18, 28), nm, font=NAMEF, fill=(255, 255, 255), anchor="lm")
+    CAPC[key] = im; return im
 def captions():
+    if STY.get("subs") == "phrase": return phrase_caps()
     caps = []
     for r in rows:
         gs = groups(r["words"])
@@ -556,7 +589,12 @@ def frame(t, caps):
     s = next(x for x in SHOTS if x["t0"] <= t < x["t1"]) if t < TOTAL - 1e-6 else SHOTS[-1]
     lt, D = t - s["t0"], s["t1"] - s["t0"]
     im = camera(KINDS[s["k"]](s, lt, D), s, s.get("cam", "in"), lt, D)
-    for c0, c1, g in caps:
+    for c in caps:
+        c0, c1, g = c[0], c[1], c[2]
+        if len(c) > 3 and c0 <= t < c1:
+            pi = phrase_img(g, c[3]); a = min(1.0, (t - c0) / 0.12)
+            if a < 1: pi = pi.copy(); pi.putalpha(pi.getchannel("A").point(lambda v: int(v * a)))
+            im.alpha_composite(pi, (0, H - pi.height - 40)); break
         if c0 <= t < c1:
             cap = caption(g); pop = eout((t - c0) / 0.1)
             if pop < 1: sc = 0.8 + 0.2 * pop; cw, ch = int(W * sc), int(300 * sc); cap = cap.resize((cw, ch), Image.BILINEAR); im.alpha_composite(cap, ((W - cw) // 2, CAPY + (300 - ch) // 2))

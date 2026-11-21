@@ -279,3 +279,21 @@ def sh_sill(p, lt, D):
     for i in range(4):
         pts = [(840 + i * 70 + math.sin(y / 30 + lt * 3 + i) * 16, y) for y in range(660, 420, -10)]; d.line(pts, fill=(255, 255, 255, 180), width=7)
     im.alpha_composite(blob(900, 700, (255, 230, 170), 90, 80), (500, 100)); return im
+
+def THUMB():
+    im = bg_house({"dawn": False}).copy(); night(im, 120)
+    im.alpha_composite(blob(1100, 900, (255, 200, 110), 90, 90), (900, 250))
+    # «другая» бабушка в окне-портале слева, крупно
+    g = bean(GRC, "void", "grin", "up", s=1.85, hair="scarf", hcol=(170, 40, 40), glasses=False)
+    put(im, g, 470, 1380)
+    im.alpha_composite(blob(900, 700, (200, 20, 30), 70, 80), (20, 300))
+    b = bean(BOYC, "shock", "scream", "up", s=1.5, sweat=True, hair="short", hcol=(92, 60, 36), flip=True)
+    put(im, b, 1520, 1260)
+    d = ImageDraw.Draw(im)
+    def big(t, y, col, size):
+        f = F("Inter-Black", size); d.text((W // 2 + 6, y + 8), t, font=f, fill=(0, 0, 0), anchor="mm", stroke_width=18, stroke_fill=(0, 0, 0))
+        d.text((W // 2, y), t, font=f, fill=col, anchor="mm", stroke_width=16, stroke_fill=INK)
+    big("НЕ ОТВЕЧАЙ", 150, (255, 60, 60), 190)
+    lbl = F("Inter-Black", 70); tx = "ЭТО НЕ БАБУШКА"; tw = d.textlength(tx, font=lbl)
+    d.rounded_rectangle((W // 2 - tw / 2 - 30, 270, W // 2 + tw / 2 + 30, 370), 20, fill=YEL); d.text((W // 2, 320), tx, font=lbl, fill=INK, anchor="mm")
+    im.alpha_composite(vignette(170)); return im

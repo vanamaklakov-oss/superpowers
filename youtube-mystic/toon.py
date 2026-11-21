@@ -627,6 +627,9 @@ def build_audio(path):
     mix = np.tanh((voice + bed + fx) * 1.05) * 0.95
     with wave.open(path, "wb") as w: w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((mix * 32767).astype(np.int16).tobytes())
 
+if MODE == "thumb":
+    im = THUMB().convert("RGB"); im.save(f"{DIR}/thumb_full.png"); im.resize((1280, 720) if W > H else (720, 1280), Image.LANCZOS).save(f"{DIR}/thumb.jpg", quality=92)
+    print("thumb", f"{DIR}/thumb.jpg"); sys.exit()
 if MODE == "stills":
     os.makedirs(f"{DIR}/stills", exist_ok=True); caps = captions(); ims = []
     for s in SHOTS: ims.append(frame(s["t0"] + (s["t1"] - s["t0"]) * 0.7, caps).convert("RGB").resize((tw := 270 if H > W else 384, th := 480 if H > W else 216)))

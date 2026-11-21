@@ -509,6 +509,8 @@ def mokraya(h=1000, hand=False):
         d.ellipse([S(185), S(70), S(365), S(270)], fill=(150, 160, 170), outline=o, width=S(5))
         d.polygon([(S(170), S(60)), (S(380), S(60)), (S(430), S(620)), (S(370), S(560)), (S(330), S(660)), (S(275), S(580)), (S(220), S(670)), (S(180), S(560)), (S(120), S(620))], fill=(10, 10, 14))
         for x in (140, 230, 320, 410): d.line([S(x), S(640), S(x), S(700 + x % 60)], fill=(120, 170, 220), width=S(4))
+        for x0 in (95, 405): d.rounded_rectangle([S(x0), S(300), S(x0 + 50), S(760)], S(25), fill=(196, 206, 216), outline=o, width=S(4))
+        for x in (200, 245, 290, 335): d.line([S(x), S(90), S(x - 25 + (x % 4) * 12), S(600)], fill=(70, 82, 104), width=S(5))
     return ss(w, h, fn, 2)
 
 def sc_banya(r, t):
@@ -568,7 +570,8 @@ def sc_vwindow(r, t):
     if who == "ded" and ap > 0:
         f = cached("dedbig", lambda: ss(520, 640, lambda d, k: ded_face(d, k, 260, 300, 200, False), 2)); gl.alpha_composite(fade(f.copy(), ap), (280 + int(sh), 560))
         gl.alpha_composite(Image.new("RGBA", (W, H), (20, 40, 90, 70)))
-    if who == "mokraya" and ap > 0: gl.alpha_composite(fade(cached("mokw", lambda: mokraya(1300)).copy(), ap), (540 - 357 + int(sh), 520))
+    if who == "mokraya" and ap > 0: gl.alpha_composite(fade(cached("mokglow", lambda: glow_layer(540, 900, 300, 380, (150, 175, 215), 120)).copy(), ap))
+    if who == "mokraya" and ap > 0: gl.alpha_composite(fade(cached("mokw", lambda: mokraya(1000)).copy(), ap), (540 - 275 + int(sh), 560))
     if p.get("hand") is not None:
         ah = appear(t, wt(r, p["hand"]), 0.15)
         if ah > 0:
@@ -599,7 +602,7 @@ def sc_yard(r, t):
         d.rectangle([520, 1060, W, 1080], fill=(60, 48, 40)); d.rectangle([520, 1140, W, 1160], fill=(60, 48, 40))
         g = glow_layer(bx + 310, 940, 160, 120, (255, 180, 80), 90); im.alpha_composite(g); return im
     im = cached("yard", mk).copy()
-    a = appear(t, wt(r, p.get("at", -1)), 1.5); x = 900 - 260 * min(1, max(0, (t - wt(r, p.get("at", -1))) / 8)) if a > 0 else 900
+    a = appear(t, wt(r, p.get("at", -1)), 1.5) if p.get("fig", True) else 0.0; x = 900 - 260 * min(1, max(0, (t - wt(r, p.get("at", -1))) / 8)) if a > 0 else 900
     if a > 0:
         d = ImageDraw.Draw(im)
         for i in range(8):

@@ -2,5 +2,5 @@
 *.wav
 stills/
 thumb_full.png
-vo/*.p[0-9]*.mp3
-vo/*.txt
+**/vo/*.p[0-9]*.mp3
+**/vo/*.txt

@@ -97,7 +97,7 @@ def draw(ch: Character, height=900, expr="neutral", blink=0.0, rage=0.0, steam=F
         _ellipse(d, hcx, my, 1.6 * u + mo * 1.2 * u, 1.2 * u + mo * 2.4 * u, fill=(120, 30, 40), outline=INK, width=max(2, lw // 2))
     elif expr == "worried": d.arc([hcx - 3 * u, my - 0.5 * u, hcx + 3 * u, my + 3 * u], 200, 340, fill=INK, width=lw)
     else: d.line([(hcx - 2.4 * u, my), (hcx + 2.4 * u, my)], fill=INK, width=lw)
-    if ch.mustache: d.chord([hcx - 4 * u, my - 3.2 * u, hcx + 4 * u, my + 0.4 * u], 180, 360, fill=INK)
+    if ch.mustache: d.chord([hcx - 3.4 * u, my - 2.6 * u, hcx + 3.4 * u, my - 0.2 * u], 180, 360, fill=(110, 105, 100))
     # ---- hat ----
     hy = hcy - hr * 0.62; hc = ch.hat_color
     if ch.hat == "cap":

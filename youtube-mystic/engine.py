@@ -667,7 +667,7 @@ def vote_overlay(im, r, t):
     c = Image.new("RGBA", (W, 120), (0, 0, 0, 0)); d = ImageDraw.Draw(c); pr = min(1, (t - r["t0"]) / 1.0) * (v["pct"] if v.get("pct") is not None else 100) / 100
     d.rounded_rectangle([90, 10, W - 90, 100], 26, fill=(30, 26, 26, 230)); d.rounded_rectangle([90, 10, 90 + (W - 180) * pr, 100], 26, fill=(232, 80, 60, 255))
     ttext(d, (130, 55), v["text"], f_bold(38), (255, 255, 255), "lm"); (ttext(d, (W - 130, 55), f"{int(v['pct'] * min(1, (t - r['t0'])))}%", f_black(40), (255, 255, 255), "rm") if v.get("pct") is not None else None)
-    im.alpha_composite(fade(c, a), (0, 200))
+    im.alpha_composite(fade(c, a), (0, 150))
 
 GRAIN = [Image.fromarray(np.dstack([np.full((H // 2, W // 2), 128, np.uint8)] * 3 + [(rng.random((H // 2, W // 2)) * 34).astype(np.uint8)]), "RGBA").resize((W, H), Image.NEAREST) for _ in range(4)]
 VIGN = None

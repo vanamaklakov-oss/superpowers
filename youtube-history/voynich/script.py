@@ -12,10 +12,10 @@ SCENES = [
  (3, "В тысяча девятьсот двенадцатом году её купил торговец старинными книгами Вилфрид Войнич.", [
     dict(bg="office", cast=[(V, 540, dict(expr="happy", arm_r=120))], cam=(1.3, 540, 1050), sign="1912"),
     dict(bg="office", cast=[(V, 540, dict(expr="smug"))], cam=(1.8, 540, 930), fx="stamp", stamp_text="КУПЛЕНО")]),
- (4, "С тех пор её пытались расшифровать лингвисты, математики и военные криптографы.", [
+ (4, "С тех пор её пытались прочитать языковеды, математики и знатоки шифров.", [
     dict(bg="library", cast=[(S, 300, dict(expr="worried", talk=True)), ("doctor", 780, dict(expr="angry", rage=0.5, steam=True))], cam=(1.1, 540, 1000)),
     dict(bg="office", cast=[("major", 540, dict(expr="neutral", arm_r=80))], cam=(1.6, 540, 960), fx="calc", calc_lines=["ШИФР?", "ЯЗЫК?", "= ???"])]),
- (5, "Даже знаменитые взломщики военных шифров сдались.", [
+ (5, "Даже лучшие специалисты по шифрам сдались.", [
     dict(bg="office", cast=[("major", 540, dict(expr="angry", rage=0.9, steam=True))], cam=(2.0, 540, 900))]),
  (6, "Многие решили, что это подделка. И сочинил её сам Войнич.", [
     dict(bg="library", cast=[(S, 330, dict(expr="smug", talk=True, arm_r=110)), (V, 750, dict(expr="shock", sweat=True))], cam=(1.15, 540, 1000)),

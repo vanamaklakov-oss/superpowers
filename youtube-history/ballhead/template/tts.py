@@ -10,9 +10,12 @@ VOICE, RATE, PITCH = "ru-RU-DmitryNeural", 22, 4   # lively: rate +14%, pitch +6
 
 def say(text, out):
     tries = [(RATE + dr, PITCH + dp) for dr, dp in [(0, 0), (1, 0), (-1, 1), (2, -1), (0, 2), (-2, 0), (3, 1), (1, 2), (-3, -1), (4, 0), (2, 3), (-4, 2), (5, -2), (0, -3), (6, 1), (-5, 0)]]
-    for r, p in tries:
+    variants = [text, text.rstrip(".!?…"), text.rstrip(".!?…") + "!"]   # the service sometimes refuses a form; vary it
+    for k, (r, p) in enumerate(tries * 2):
+        t = variants[k % len(variants)]
+        if k >= len(tries): time.sleep(4)                                    # second pass: give the service time
         async def go():
-            com = edge_tts.Communicate(text, voice=VOICE, rate=f"{r:+d}%", pitch=f"{p:+d}Hz", boundary="WordBoundary"); ws = []
+            com = edge_tts.Communicate(t, voice=VOICE, rate=f"{r:+d}%", pitch=f"{p:+d}Hz", boundary="WordBoundary"); ws = []
             with open(out, "wb") as f:
                 async for ch in com.stream():
                     if ch["type"] == "audio": f.write(ch["data"])

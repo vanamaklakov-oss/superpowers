@@ -72,6 +72,39 @@ def check():
         miss = [w for w in norm(text) if w not in norm(got)]
         print(f"{n:2d} {'OK ' if not miss else 'ПРОВЕРИТЬ'} | {got}" + (f"   ← нет: {miss}" if miss else ""))
 
+def gemini_tts():
+    import base64, difflib, time, urllib.request
+    from faster_whisper import WhisperModel
+    VO = f"{DIR}/vo"; os.makedirs(VO, exist_ok=True); wm = WhisperModel("small", compute_type="int8")
+    gv = STY.get("gvoice", "Charon"); model = STY.get("gmodel", "gemini-3.8-flash-tts")
+    norm = lambda z: re.sub(r"[^а-яёa-z0-9]", "", z.lower().replace("ё", "е"))
+    for n, text, _, *ex in SCENES:
+        if not text: continue
+        out = f"{VO}/{n:02d}.mp3"; vs = ["gemini", gv, model]
+        if os.path.exists(out + ".json") and json.load(open(out + ".json")).get("text") == text: continue
+        body = {"contents": [{"parts": [{"text": text}]}], "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": gv}}}}}
+        for k in range(8):
+            try:
+                req = urllib.request.Request(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", json.dumps(body).encode(), {"Content-Type": "application/json", "x-goog-api-key": "dummy"})
+                b = base64.b64decode(json.load(urllib.request.urlopen(req, timeout=120))["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]); break
+            except Exception as e: print("retry", n, e, flush=True); time.sleep(10 + 10 * k)
+        else: raise RuntimeError(f"gemini tts failed {n}")
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-", "-b:a", "128k", out], input=b, check=True)
+        a = pcm(out)[::3]; segs, _ = wm.transcribe(a, language="ru", word_timestamps=True)
+        ww = [(w.start, w.end, w.word.strip()) for sg in segs for w in sg.words]
+        toks = text.split(); A = [norm(t) for t in toks]; B = [norm(w[2]) for w in ww]; tm = [None] * len(toks)
+        for blk in difflib.SequenceMatcher(None, A, B, autojunk=False).get_matching_blocks():
+            for k in range(blk.size): tm[blk.a + k] = (ww[blk.b + k][0], ww[blk.b + k][1])
+        end = len(a) / (SR / 3)
+        for i in range(len(toks)):
+            if tm[i] is None:
+                prv = next((tm[j][1] for j in range(i - 1, -1, -1) if tm[j]), 0.0); nxt = next((tm[j][0] for j in range(i + 1, len(toks)) if tm[j]), end)
+                gap = [j for j in range(len(toks)) if tm[j] is None and j >= i and all(tm[q] is None for q in range(i, j + 1))]; m = len(gap); k = 0
+                st = prv + (nxt - prv) * k / max(m, 1); tm[i] = (st, st + (nxt - prv) / max(m, 1))
+        words = [{"w": re.sub(r"^[«(]+|[»),.!?:;…—]+$", "", t) or t, "s": a0, "d": max(0.05, a1 - a0)} for t, (a0, a1) in zip(toks, tm) if re.search(r"[\wё]", t, re.I)]
+        json.dump({"text": text, "voice": vs, "dur": end, "words": words}, open(out + ".json", "w"), ensure_ascii=False)
+        print(n, "ok", round(end, 2), flush=True); time.sleep(4)
+if MODE == "tts" and (STY.get("tts") == "gemini" or os.environ.get("TTS") == "gemini"): gemini_tts(); sys.exit()
 if MODE == "tts": tts(); sys.exit()
 if MODE == "check": check(); sys.exit()
 

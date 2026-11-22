@@ -24,7 +24,7 @@ SCENES = [
  (7, "Все ждали аварий и хаоса.", [
     dict(bg="kitchen", cast=[(E, 540, dict(expr="shock", sweat=True))], cam=(1.8, 540, 930))]),
  (8, "А случилось обратное: в первые дни аварий стало даже меньше.", [
-    dict(bg="office", cast=[(O, 540, dict(expr="shock"))], cam=(1.3, 540, 1050), fx="calc", calc_lines=["ЖДАЛИ: ХАОС", "ВЫШЛО: МЕНЬШЕ АВАРИЙ"]),
+    dict(bg="office", cast=[(O, 540, dict(expr="shock"))], cam=(1.3, 540, 1050), fx="calc", calc_lines=["ЖДАЛИ: ХАОС", "ВЫШЛО:", "АВАРИЙ МЕНЬШЕ"]),
     dict(bg="office", cast=[(O, 540, dict(expr="happy", arm_l=150, arm_r=150))], cam=(1.25, 540, 1050))]),
  (9, "Водители так боялись ошибиться, что ездили предельно осторожно.", [
     dict(bg="highway", cast=[(D, 540, dict(expr="worried", sweat=True))], cam=(1.9, 540, 900))]),

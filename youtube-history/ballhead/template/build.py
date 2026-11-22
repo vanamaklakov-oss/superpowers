@@ -32,6 +32,17 @@ CAST = {
     "major": Character(hat="peaked", hat_color=(110, 100, 60), coat=(120, 110, 70), trim=(220, 190, 80), tie=(110, 100, 60), mustache=True),
     "soldier": Character(hat="cap", hat_color=(110, 100, 60), coat=(120, 110, 70), trim=(150, 130, 80), tie=(110, 100, 60)),
     "farmer": Character(hat="bowler", hat_color=(150, 110, 60), coat=(90, 120, 160), trim=(230, 230, 230), tie=(170, 50, 40), hair=None),
+    "peter": Character(hat="tricorn", hat_color=(25, 25, 30), coat=(30, 90, 60), trim=(230, 190, 80), tie=(200, 40, 40), hair=(60, 40, 25), mustache=True),
+    "boyar": Character(hat="bowler", hat_color=(120, 40, 40), coat=(130, 40, 40), trim=(230, 190, 80), tie=(130, 40, 40), hair=None, beard=(110, 70, 40), mustache=True),
+    "boyar2": Character(hat="bowler", hat_color=(60, 60, 110), coat=(70, 70, 130), trim=(230, 200, 120), tie=(70, 70, 130), hair=None, beard=(170, 170, 170), mustache=True),
+    "tsar": Character(hat="peaked", hat_color=(240, 240, 240), coat=(30, 60, 120), trim=(240, 200, 60), tie=(240, 240, 240), hair=(120, 90, 60), mustache=True),
+    "seward": Character(hat="tophat", hat_color=(20, 20, 24), coat=(40, 40, 50), trim=(220, 220, 230), tie=(30, 30, 30), hair=(200, 200, 200)),
+    "miner": Character(hat="cap", hat_color=(120, 80, 40), coat=(150, 60, 50), trim=(230, 200, 140), tie=(150, 60, 50), beard=(120, 80, 50)),
+    "ohio": Character(hat="tophat", hat_color=(30, 30, 35), coat=(150, 40, 40), trim=(240, 240, 240), tie=(240, 240, 240), hair=(80, 60, 40)),
+    "mich": Character(hat="tophat", hat_color=(30, 30, 35), coat=(40, 70, 150), trim=(240, 220, 120), tie=(240, 240, 240), hair=(160, 120, 70)),
+    "driver": Character(hat="none", coat=(220, 180, 60), trim=(60, 60, 60), tie=(40, 90, 160), hair=(230, 210, 150)),
+    "driver2": Character(hat="cap", hat_color=(40, 90, 160), coat=(40, 90, 160), trim=(240, 220, 60), tie=(240, 220, 60), hair=(200, 180, 120)),
+    "dexter": Character(hat="tophat", hat_color=(40, 25, 20), coat=(120, 60, 120), trim=(240, 200, 60), tie=(240, 240, 240), hair=(200, 200, 200)),
     "rich": Character(hat="tophat", hat_color=(30, 30, 35), coat=(40, 70, 50), trim=(230, 200, 90), tie=(240, 240, 240), hair=(140, 110, 80)),
     "doctor": Character(hat="none", coat=(25, 25, 30), trim=(240, 240, 240), tie=(25, 25, 30), glasses=True, hair=(170, 170, 170)),
     "dealer2": Character(hat="bowler", hat_color=(30, 30, 30), coat=(90, 90, 100), trim=(200, 200, 200), tie=(150, 40, 40), hair=None, mustache=True),
@@ -197,7 +208,7 @@ def frame(t):
     if sh.get("bubble"): i, kind = sh["bubble"]; bubble(im, heads[i][0], heads[i][1], kind, t)
     if sh.get("fx") in ("flame", "book"): gag(im, sh["fx"], heads[0][2] if heads else (540, 900), lt, sh)
     # camera: push-in from zoom*0.94 to zoom over the shot, centred on (fx, fy)
-    z0, fx, fy = sh["cam"]; z = z0 * (0.94 + 0.06 * min(1, lt / max(0.4, dur)))
+    z0, fx, fy = sh["cam"]; z = max(1.0, z0 * (0.94 + 0.06 * min(1, lt / max(0.4, dur))))
     cw, ch = W / z, H / z; x0 = min(max(0, fx - cw / 2), W - cw); y0 = min(max(0, fy - ch / 2), H - ch)
     im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
     if sh.get("fx") in ("ouch", "nozombie", "money", "stamp", "calc"): gag(im, sh["fx"], None, lt, sh)     # screen space: never cropped by the camera

@@ -197,7 +197,7 @@ def frame(t):
     if sh.get("bubble"): i, kind = sh["bubble"]; bubble(im, heads[i][0], heads[i][1], kind, t)
     if sh.get("fx") in ("flame", "book"): gag(im, sh["fx"], heads[0][2] if heads else (540, 900), lt, sh)
     # camera: push-in from zoom*0.94 to zoom over the shot, centred on (fx, fy)
-    z0, fx, fy = sh["cam"]; z = z0 * (0.94 + 0.06 * min(1, lt / max(0.4, dur)))
+    z0, fx, fy = sh["cam"]; z = max(1.0, z0 * (0.94 + 0.06 * min(1, lt / max(0.4, dur))))
     cw, ch = W / z, H / z; x0 = min(max(0, fx - cw / 2), W - cw); y0 = min(max(0, fy - ch / 2), H - ch)
     im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
     if sh.get("fx") in ("ouch", "nozombie", "money", "stamp", "calc"): gag(im, sh["fx"], None, lt, sh)     # screen space: never cropped by the camera

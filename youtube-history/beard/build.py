@@ -170,7 +170,7 @@ def gag(im, kind, hand, t, sh=None):
             bd.rectangle([4, 4, 145, 65], outline=(40, 90, 40), width=5); bd.ellipse([55, 15, 95, 55], outline=(40, 90, 40), width=4); bd.text((75, 35), "$", font=ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 34), anchor="mm", fill=(30, 70, 30))
             bill = bill.rotate(a, expand=True); im.paste(bill, (int(x), int(y)), bill)
     if kind == "stamp":
-        p = min(1, t / 0.18); f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", int(170 * min(1, 7 / len(sh.get("stamp_text", "ЗАКОННО"))) * (1.6 - 0.6 * p)))
+        p = max(0, min(1, t / 0.18)); f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", int(170 * min(1, 7 / len(sh.get("stamp_text", "ЗАКОННО"))) * (1.6 - 0.6 * p)))
         lay = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ld = ImageDraw.Draw(lay)
         ld.rounded_rectangle([170, 640, 910, 900], radius=30, outline=(40, 170, 60, 230), width=16); ld.text((540, 770), sh.get("stamp_text", "ЗАКОННО"), font=f, anchor="mm", fill=(40, 170, 60, 230))
         lay = lay.rotate(-8, center=(540, 770)); im.paste(lay, (0, 0), lay)
@@ -190,7 +190,7 @@ def gag(im, kind, hand, t, sh=None):
 
 # ---------------- frames ----------------
 def frame(t):
-    t = float(t); sh = next((s for s in SHOTS if s["a"] <= t < s["b"]), SHOTS[-1]); lt = float(t - sh["a"]); dur = sh["b"] - sh["a"]
+    t = float(t); sh = next((s for s in SHOTS if s["a"] <= t < s["b"]), None) or max((s for s in SHOTS if s["a"] <= t), key=lambda s: s["a"], default=SHOTS[0]); lt = float(t - sh["a"]); dur = sh["b"] - sh["a"]
     im = BGS[sh["bg"]].copy()
     talk_lvl = float(ENV[min(len(ENV) - 1, int(t * SR))])
     heads = []
@@ -219,7 +219,7 @@ def frame(t):
     cur = next((w for j, w in enumerate(words) if w[0] <= t < (words[j + 1][0] if j + 1 < len(words) else w[1] + 0.3)), None)
     if cur and t < cur[1] + 0.35:
         txt = cur[2].strip(" ,.:;!?«»—").upper()
-        if txt: ImageDraw.Draw(im).text((W // 2, int(H * 0.64)), txt, font=FONT, anchor="mm", fill=(255, 255, 255), stroke_width=7, stroke_fill=(20, 20, 20))
+        if txt: ImageDraw.Draw(im).text((W // 2, int(H * 0.64)), txt, font=FONT if FONT.getlength(txt) < W - 80 else FONT.font_variant(size=int(FONT.size * (W - 80) / FONT.getlength(txt))), anchor="mm", fill=(255, 255, 255), stroke_width=7, stroke_fill=(20, 20, 20))
     return im
 
 def main():

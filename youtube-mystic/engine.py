@@ -56,7 +56,7 @@ def tts():
                         elif ch["type"] == "WordBoundary": ws.append({"w": ch["text"], "s": ch["offset"] / 1e7, "d": ch["duration"] / 1e7})
                 return ws
             try:
-                ws = asyncio.run(go())
+                ws = asyncio.run(asyncio.wait_for(go(), 45))
                 if ws and os.path.getsize(out) > 2000: return ws
             except Exception: time.sleep(1.5)
         raise RuntimeError(f"tts failed: {text}")

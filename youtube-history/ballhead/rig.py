@@ -23,6 +23,7 @@ class Character:
     stripes: bool = False            # striped cap / waistcoat
     mustache: bool = False
     glasses: bool = False
+    beard: tuple = None              # beard colour; None = clean-shaven
 
 def _ellipse(d, cx, cy, rx, ry, **kw): d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], **kw)
 def _line(d, pts, w, fill=INK): d.line(pts, fill=fill, width=w, joint="curve"); [_ellipse(d, x, y, w / 2, w / 2, fill=fill) for x, y in (pts[0], pts[-1])]
@@ -87,6 +88,10 @@ def draw(ch: Character, height=900, expr="neutral", blink=0.0, rage=0.0, steam=F
         inner, outer = (x - s * 2.4 * u, y + (tilt if expr == "angry" else -tilt / 2)), (x + s * 2.4 * u, y - (tilt / 2 if expr == "angry" else -tilt / 2))
         d.line([inner, outer], fill=INK, width=lw)
     # mouth
+    if ch.beard:   # jaw-hugging beard, drawn under the mouth; the mouth keeps a skin patch
+        box = [hcx - hr - lw / 2, hcy - hr - 11 * u, hcx + hr + lw / 2, hcy + hr + 11 * u]
+        d.chord(box, 6, 174, fill=ch.beard); d.arc(box, 6, 174, fill=INK, width=lw)
+        _ellipse(d, hcx, hcy + 7.5 * u, 5.2 * u, 3.4 * u, fill=(252, 252, 252))
     my = hcy + 7.5 * u; mo = max(mouth_open, 0.0)
     if expr == "angry":
         d.rounded_rectangle([hcx - 4 * u, my - 1.6 * u, hcx + 4 * u, my + 1.6 * u], radius=u, fill=(255, 255, 255), outline=INK, width=max(2, lw // 2))
@@ -97,7 +102,7 @@ def draw(ch: Character, height=900, expr="neutral", blink=0.0, rage=0.0, steam=F
         _ellipse(d, hcx, my, 1.6 * u + mo * 1.2 * u, 1.2 * u + mo * 2.4 * u, fill=(120, 30, 40), outline=INK, width=max(2, lw // 2))
     elif expr == "worried": d.arc([hcx - 3 * u, my - 0.5 * u, hcx + 3 * u, my + 3 * u], 200, 340, fill=INK, width=lw)
     else: d.line([(hcx - 2.4 * u, my), (hcx + 2.4 * u, my)], fill=INK, width=lw)
-    if ch.mustache: d.chord([hcx - 3.4 * u, my - 2.6 * u, hcx + 3.4 * u, my - 0.2 * u], 180, 360, fill=(110, 105, 100))
+    if ch.mustache: d.chord([hcx - 3.4 * u, my - 2.6 * u, hcx + 3.4 * u, my - 0.2 * u], 180, 360, fill=ch.beard or (110, 105, 100))
     # ---- hat ----
     hy = hcy - hr * 0.62; hc = ch.hat_color
     if ch.hat == "cap":

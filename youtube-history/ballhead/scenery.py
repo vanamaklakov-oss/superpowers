@@ -1,5 +1,5 @@
 """Code-drawn 9:16 backgrounds for when the FLUX quota is spent: python3 ballhead/scenery.py <name> <out.jpg>
-Names: forest, mine, snow, harbor, field, road."""
+Names: forest, mine, snow, harbor, sea, tower."""
 import sys, math, random
 from PIL import Image, ImageDraw, ImageFilter
 W, H, HOR = 1080, 1920, 1050
@@ -81,5 +81,37 @@ def harbor():
     for cx, cy in [(80, 1500), (180, 1470), (930, 1490)]: d.rectangle([cx - 60, cy - 110, cx + 60, cy], fill=(130, 90, 50), outline=(70, 45, 25), width=6); d.line([(cx - 60, cy - 55), (cx + 60, cy - 55)], fill=(70, 45, 25), width=5)
     return im
 
+def ship(d, sx, sy, sc=1.0, torn=False):
+    d.polygon([(sx - 300 * sc, sy - 90 * sc), (sx + 330 * sc, sy - 90 * sc), (sx + 260 * sc, sy + 20 * sc), (sx - 250 * sc, sy + 20 * sc)], fill=(110, 70, 40), outline=(60, 35, 20))
+    d.rectangle([sx - 300 * sc, sy - 130 * sc, sx + 330 * sc, sy - 90 * sc], fill=(150, 100, 55))
+    for mx, mh in [(sx - 150 * sc, 560 * sc), (sx + 60 * sc, 640 * sc)]:
+        d.line([(mx, sy - 90 * sc), (mx, sy - 90 * sc - mh)], fill=(80, 50, 30), width=max(4, int(12 * sc)))
+        for k in range(3):
+            top = sy - 90 * sc - mh + 40 * sc + k * mh * 0.3; w = (120 - k * 5) * sc
+            if torn and k == 1: d.polygon([(mx - w, top), (mx + w * 0.2, top), (mx - w * 0.5, top + mh * 0.22)], fill=(225, 218, 200)); continue
+            d.polygon([(mx - w, top), (mx + w, top), (mx + w * 0.9, top + mh * 0.25), (mx - w * 0.9, top + mh * 0.25)], fill=(245, 238, 220), outline=(190, 180, 160))
+def sea():
+    im = Image.new("RGB", (W, H)); sky(im, (120, 135, 160), (210, 205, 195), sun=False); d = ImageDraw.Draw(im)
+    for y in range(HOR, H): d.line([(0, y), (W, y)], fill=lerp((70, 105, 135), (30, 60, 90), (y - HOR) / (H - HOR)))
+    ship(d, 600, 1080, 0.7, torn=True); r = random.Random(9)
+    for _ in range(260):
+        y = r.uniform(HOR + 10, H); s = 0.3 + (y - HOR) / (H - HOR) * 2; x = r.uniform(-40, W)
+        d.arc([x, y - 12 * s, x + 60 * s, y + 12 * s], 200, 340, fill=(170, 200, 220), width=max(2, int(3 * s)))
+    return im
+def tower():
+    im = Image.new("RGB", (W, H)); sky(im, (20, 25, 55), (70, 70, 110), sun=False); d = ImageDraw.Draw(im)
+    d.ellipse([760, 180, 900, 320], fill=(240, 235, 210)); r = random.Random(1)
+    for _ in range(120): x, y = r.uniform(0, W), r.uniform(0, 900); d.point((x, y), fill=(220, 220, 240))
+    ground(im, (60, 70, 55), (40, 45, 35)); d = ImageDraw.Draw(im)
+    x0, x1, top = 160, 920, 380
+    d.rectangle([x0, top, x1, H], fill=(150, 145, 135))
+    for k, y in enumerate(range(top, H, 60)):
+        off = 0 if k % 2 else 60
+        for x in range(x0 - off, x1, 120): d.rectangle([max(x0, x + 3), y + 3, min(x1, x + 117), y + 57], fill=lerp((140, 135, 125), (165, 160, 150), r.random()))
+    for x in range(x0, x1, 110): d.rectangle([x, top - 80, x + 60, top], fill=(150, 145, 135))
+    for wx in (320, 700): d.rounded_rectangle([wx, 620, wx + 80, 800], radius=40, fill=(25, 20, 30)); d.rounded_rectangle([wx + 15, 640, wx + 65, 780], radius=25, fill=(250, 200, 110))
+    g = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ImageDraw.Draw(g).rectangle([0, 0, W, H], fill=(20, 25, 60, 70)); im.paste(g, (0, 0), g)
+    return im
+
 if __name__ == "__main__":
-    finish({"forest": forest, "mine": mine, "snow": snow, "harbor": harbor}[sys.argv[1]](), sys.argv[2])
+    finish({"forest": forest, "mine": mine, "snow": snow, "harbor": harbor, "sea": sea, "tower": tower}[sys.argv[1]](), sys.argv[2])

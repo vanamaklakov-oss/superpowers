@@ -97,8 +97,22 @@ VOICE = np.zeros(int(TOTAL * SR), np.float32)
 for r in rows: s = int(r["t0"] * SR); VOICE[s:s + len(r["a"])] += r["a"][: len(VOICE) - s]
 ENV = np.convolve(np.abs(VOICE), np.ones(SR // 25) / (SR // 25), "same"); ENV /= ENV.max()
 
+def boom(L_s=1.8, f0=85, f1=32, gain=0.9):
+    """Cinematic impact: falling sub-bass + noise transient + a dark 'braam' layer."""
+    L = int(L_s * SR); tt = np.arange(L) / SR
+    sub = np.sin(2 * np.pi * np.cumsum(f1 + (f0 - f1) * np.exp(-tt / 0.25)) / SR) * np.exp(-tt / 0.55)
+    hit = np.convolve(rng.standard_normal(L), np.ones(6) / 6, "same") * np.exp(-tt / 0.045)
+    braam = sum(np.sign(np.sin(2 * np.pi * 55 * h * tt)) / h for h in (1, 1.5, 2)) * np.exp(-tt / 0.7) * np.minimum(1, tt / 0.02)
+    braam = np.convolve(braam, np.ones(40) / 40, "same")
+    return (sub * 0.9 + hit * 0.5 + braam * 0.22) * gain
+
 def mix():
     n = len(VOICE); out = VOICE * 1.25
+    hooks = [sh for sh in SHOTS if sh.get("hook")]
+    if hooks:                                                # opening impact under the hook line, and a smaller one into the story
+        b = boom(); out[: min(n, len(b))] += b[: n]
+        e = int(hooks[-1]["b"] * SR) - int(0.05 * SR); b2 = boom(1.0, 70, 40, 0.45)
+        if 0 < e < n - len(b2): out[e:e + len(b2)] += b2
     for sh in SHOTS[1:]:                                    # tiny whoosh on each cut
         s = int((sh["a"] - 0.12) * SR); L = int(0.18 * SR)
         if 0 < s < n - L: out[s:s + L] += np.convolve(rng.standard_normal(L), np.ones(10) / 10, "same") * np.hanning(L) * 0.05
@@ -167,6 +181,18 @@ def bubble(im, hx, hy, kind, t):
     if on:
         for k in range(8): a = k * math.pi / 4; d.line([(bx + math.cos(a) * 80, by - 15 + math.sin(a) * 80), (bx + math.cos(a) * 105, by - 15 + math.sin(a) * 105)], fill=(240, 170, 30), width=8)
 
+def hook_title(im, text, t):
+    """Huge two-line hook title that punches in, with the background dimmed."""
+    dim = Image.new("RGB", (W, H), (10, 5, 5)); im.paste(Image.blend(im, dim, 0.45))
+    k = 1.0 + 0.6 * max(0.0, 1 - t / 0.14); d = ImageDraw.Draw(im)
+    lines = text.split("\n"); size = int(150 * k)
+    f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", size)
+    widest = max(f.getlength(l) for l in lines)
+    if widest > W - 80: f = f.font_variant(size=int(size * (W - 80) / widest))
+    y = 760 - (len(lines) - 1) * f.size * 0.55
+    for i, l in enumerate(lines):
+        d.text((W // 2, y + i * f.size * 1.1), l, font=f, anchor="mm", fill=(255, 60, 50) if i == len(lines) - 1 else (255, 255, 255), stroke_width=10, stroke_fill=(0, 0, 0))
+
 def sign(im, text, t):
     d = ImageDraw.Draw(im); pop = min(1, t / 0.15); f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", int(120 * (0.6 + 0.4 * pop)))
     box = d.multiline_textbbox((W // 2, 330), text, font=f, anchor="mm", align="center")
@@ -229,15 +255,17 @@ def frame(t):
     if sh.get("fx") in ("flame", "book"): gag(im, sh["fx"], heads[0][2] if heads else (540, 900), lt, sh)
     # camera: push-in from zoom*0.94 to zoom over the shot, centred on (fx, fy)
     z0, fx, fy = sh["cam"]; z = max(1.0, z0 * (0.94 + 0.06 * min(1, lt / max(0.4, dur))))
+    if sh.get("hook") and lt < 0.45: z *= 1.04; fx += math.sin(lt * 90) * 22 * (1 - lt / 0.45); fy += math.cos(lt * 77) * 22 * (1 - lt / 0.45)   # impact shake
     cw, ch = W / z, H / z; x0 = min(max(0, fx - cw / 2), W - cw); y0 = min(max(0, fy - ch / 2), H - ch)
     im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
     if sh.get("fx") in ("ouch", "nozombie", "money", "stamp", "calc"): gag(im, sh["fx"], None, lt, sh)     # screen space: never cropped by the camera
     if sh.get("sign"): sign(im, sh["sign"], lt)
+    if sh.get("hook"): hook_title(im, sh["hook"], lt)
     if lt < 0.07: im = im.filter(ImageFilter.GaussianBlur(float(10 * (1 - lt / 0.07))))   # snap on the cut
     # one-word caption
     words = [w for r in rows for w in r["words"]]
     cur = next((w for j, w in enumerate(words) if w[0] <= t < (words[j + 1][0] if j + 1 < len(words) else w[1] + 0.3)), None)
-    if cur and t < cur[1] + 0.35:
+    if cur and t < cur[1] + 0.35 and not sh.get("hook"):
         txt = cur[2].strip(" ,.:;!?«»—").upper()
         if txt: ImageDraw.Draw(im).text((W // 2, int(H * 0.64)), txt, font=FONT if FONT.getlength(txt) < W - 80 else FONT.font_variant(size=int(FONT.size * (W - 80) / FONT.getlength(txt))), anchor="mm", fill=(255, 255, 255), stroke_width=7, stroke_fill=(20, 20, 20))
     return im

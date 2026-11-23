@@ -4,6 +4,8 @@
 # (Tsarskoye Selo); ~6 tonnes of amber; dismantled by German troops in 36 hours (1941) and shown at Königsberg Castle;
 # vanished 1944–45; theories: destroyed in the castle (Scott-Clark & Levy 2004) or hidden; reconstruction 1979–2003.
 SCENES = [
+ (0, "Шесть тонн янтаря исчезли без следа.", [
+    dict(bg="amber", cast=[], cam=(1.5, 540, 1000), hook="6 ТОНН ЯНТАРЯ\nИСЧЕЗЛИ")]),
  (1, "Целую комнату из янтаря украли во время войны. И её до сих пор ищут.", [
     dict(bg="amber", cast=[("scholar", 540, dict(expr="shock", sweat=True))], cam=(1.3, 540, 1100)),
     dict(bg="bunker", cast=[("scholar", 540, dict(expr="worried"))], cam=(1.9, 540, 900), bubble=(0, "?"))]),

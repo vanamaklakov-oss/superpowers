@@ -5,6 +5,8 @@
 # taken to the shrine of St Vitus in the mountains; leading theory: stress-induced mass psychogenic illness (Waller).
 D, E, M = "dancer", "dancer2", "mayor"
 SCENES = [
+ (0, "Говорят, они танцевали до смерти.", [
+    dict(bg="street", cast=[("dancer", 540, dict(expr="shock", arm_l=160, arm_r=160, lean=8, sweat=True))], cam=(1.5, 540, 1000), hook="ОНИ ТАНЦЕВАЛИ\nДО СМЕРТИ")]),
  (1, "В одном городе люди начали танцевать. И не могли остановиться.", [
     dict(bg="street", cast=[(D, 330, dict(expr="happy", arm_l=150, arm_r=150, bob=10)), (E, 750, dict(expr="worried", arm_l=150, arm_r=150, sweat=True))], cam=(1.1, 540, 1050)),
     dict(bg="street", cast=[(D, 540, dict(expr="shock", arm_l=160, arm_r=160, lean=8, sweat=True))], cam=(1.9, 540, 900))]),

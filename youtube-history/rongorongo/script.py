@@ -5,7 +5,9 @@
 # Undeciphered; debated whether true writing or mnemonic proto-writing.
 I, M = "islander", "missionary"
 SCENES = [
- (1, "На острове посреди океана нашли письменность, которую до сих пор никто не может прочитать.", [
+ (0, "Эти знаки не может прочитать никто на Земле.", [
+    dict(bg="hut", cast=[], cam=(1.5, 540, 1000), hook="НИКТО НЕ МОЖЕТ\nПРОЧИТАТЬ")]),
+ (1, "Их нашли на острове посреди океана, и тайна не раскрыта до сих пор.", [
     dict(bg="island", cast=[("scholar", 540, dict(expr="worried", sweat=True))], cam=(1.3, 540, 1100)),
     dict(bg="museum", cast=[], cam=(1.6, 540, 960), bubble=None)]),
  (2, "Это остров Пасхи, знаменитый каменными головами.", [

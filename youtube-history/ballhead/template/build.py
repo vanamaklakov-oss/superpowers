@@ -116,7 +116,7 @@ def mix():
     for sh in SHOTS[1:]:                                    # tiny whoosh on each cut
         s = int((sh["a"] - 0.12) * SR); L = int(0.18 * SR)
         if 0 < s < n - L: out[s:s + L] += np.convolve(rng.standard_normal(L), np.ones(10) / 10, "same") * np.hanning(L) * 0.05
-    out /= max(1, np.abs(out).max() / 0.95); p = f"{HERE}/out/mix.wav"
+    out = np.tanh(out * 1.05) * 0.97; p = f"{HERE}/out/mix.wav"        # soft limiter: the boom hits hard without ducking the voice
     with wave.open(p, "wb") as w: w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((out * 32767).astype("<i2").tobytes())
     return p
 
@@ -189,7 +189,7 @@ def hook_title(im, text, t):
     f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", size)
     widest = max(f.getlength(l) for l in lines)
     if widest > W - 80: f = f.font_variant(size=int(size * (W - 80) / widest))
-    y = 760 - (len(lines) - 1) * f.size * 0.55
+    y = 430 - (len(lines) - 1) * f.size * 0.55
     for i, l in enumerate(lines):
         d.text((W // 2, y + i * f.size * 1.1), l, font=f, anchor="mm", fill=(255, 60, 50) if i == len(lines) - 1 else (255, 255, 255), stroke_width=10, stroke_fill=(0, 0, 0))
 

@@ -5,7 +5,9 @@
 # days, then vanished; Ammonians said a sandstorm buried them during a meal.
 K, P = "cambyses", "persian"
 SCENES = [
- (1, "Пятьдесят тысяч солдат ушли в пустыню. И пропали без следа.", [
+ (0, "Пятьдесят тысяч солдат. И ни одного так и не нашли.", [
+    dict(bg="storm", cast=[], cam=(1.5, 540, 1000), hook="50 000 СОЛДАТ\nИСЧЕЗЛИ")]),
+ (1, "Они ушли в пустыню и пропали без следа.", [
     dict(bg="desert", cast=[(P, 540, dict(expr="smug", arm_r=90))], cam=(1.3, 540, 1100), sign="50 000"),
     dict(bg="desert", cast=[], cam=(1.6, 540, 960))]),
  (2, "Шестой век до нашей эры. Персидский царь Камбис завоёвывает Египет.", [

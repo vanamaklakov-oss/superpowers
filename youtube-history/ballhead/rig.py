@@ -24,6 +24,7 @@ class Character:
     mustache: bool = False
     glasses: bool = False
     beard: tuple = None              # beard colour; None = clean-shaven
+    skin: tuple = (252, 252, 252)    # head colour
 
 def _ellipse(d, cx, cy, rx, ry, **kw): d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], **kw)
 def _line(d, pts, w, fill=INK): d.line(pts, fill=fill, width=w, joint="curve"); [_ellipse(d, x, y, w / 2, w / 2, fill=fill) for x, y in (pts[0], pts[-1])]
@@ -61,7 +62,7 @@ def draw(ch: Character, height=900, expr="neutral", blink=0.0, rage=0.0, steam=F
         _ellipse(d, hx, hy, 2.1 * u, 2.1 * u, fill=(250, 250, 250), outline=INK, width=lw)        # mitten hand
     # ---- head ----
     hr = 15.5 * u; hcx = cx + look * 1.5 * u; hcy = 24 * u + by
-    _ellipse(d, hcx, hcy, hr, hr, fill=(252, 252, 252), outline=INK, width=lw)
+    _ellipse(d, hcx, hcy, hr, hr, fill=ch.skin, outline=INK, width=lw)
     if rage > 0:                                  # purple fills up from the chin
         mask = Image.new("L", (W, H), 0); md = ImageDraw.Draw(mask); _ellipse(md, hcx, hcy, hr - lw / 2, hr - lw / 2, fill=255)
         lvl = hcy + hr - 2 * hr * min(1, rage); md.rectangle([0, 0, W, lvl], fill=0)
@@ -91,7 +92,7 @@ def draw(ch: Character, height=900, expr="neutral", blink=0.0, rage=0.0, steam=F
     if ch.beard:   # jaw-hugging beard, drawn under the mouth; the mouth keeps a skin patch
         box = [hcx - hr - lw / 2, hcy - hr - 11 * u, hcx + hr + lw / 2, hcy + hr + 11 * u]
         d.chord(box, 6, 174, fill=ch.beard); d.arc(box, 6, 174, fill=INK, width=lw)
-        _ellipse(d, hcx, hcy + 7.5 * u, 5.2 * u, 3.4 * u, fill=(252, 252, 252))
+        _ellipse(d, hcx, hcy + 7.5 * u, 5.2 * u, 3.4 * u, fill=ch.skin)
     my = hcy + 7.5 * u; mo = max(mouth_open, 0.0)
     if expr == "angry":
         d.rounded_rectangle([hcx - 4 * u, my - 1.6 * u, hcx + 4 * u, my + 1.6 * u], radius=u, fill=(255, 255, 255), outline=INK, width=max(2, lw // 2))

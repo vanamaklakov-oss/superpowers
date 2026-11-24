@@ -72,6 +72,12 @@ CAST = {
     "greengirl": Character(hat="none", coat=(60, 120, 90), trim=(200, 230, 170), tie=(60, 120, 90), hair=(140, 100, 50), skin=(150, 200, 120)),
     "agnes": Character(hat="none", coat=(60, 120, 90), trim=(200, 230, 170), tie=(60, 120, 90), hair=(140, 100, 50)),
     "peasant": Character(hat="cap", hat_color=(120, 100, 60), coat=(130, 100, 70), trim=(200, 180, 140), tie=(130, 100, 70), beard=(110, 80, 50)),
+    "user": Character(hat="none", coat=(60, 130, 200), trim=(240, 240, 240), tie=(60, 130, 200), hair=(70, 50, 35)),
+    "user2": Character(hat="cap", hat_color=(220, 70, 60), coat=(240, 180, 60), trim=(60, 60, 60), tie=(240, 180, 60)),
+    "teen": Character(hat="cap", hat_color=(130, 60, 170), coat=(90, 200, 160), trim=(250, 250, 250), tie=(90, 200, 160), hair=(40, 30, 25)),
+    "ceo": Character(hat="none", coat=(70, 70, 78), trim=(150, 150, 160), tie=(70, 70, 78), hair=(110, 80, 50), glasses=True),
+    "designer": Character(hat="none", coat=(240, 240, 245), trim=(40, 40, 50), tie=(240, 120, 40), hair=(30, 30, 30)),
+    "adman": Character(hat="none", coat=(30, 40, 90), trim=(230, 200, 90), tie=(200, 40, 40), hair=(200, 170, 90)),
     "rich": Character(hat="tophat", hat_color=(30, 30, 35), coat=(40, 70, 50), trim=(230, 200, 90), tie=(240, 240, 240), hair=(140, 110, 80)),
     "doctor": Character(hat="none", coat=(25, 25, 30), trim=(240, 240, 240), tie=(25, 25, 30), glasses=True, hair=(170, 170, 170)),
     "dealer2": Character(hat="bowler", hat_color=(30, 30, 30), coat=(90, 90, 100), trim=(200, 200, 200), tie=(150, 40, 40), hair=None, mustache=True),
@@ -239,6 +245,19 @@ def gag(im, kind, hand, t, sh=None):
         d.rectangle([cx - 80, cy - 50, cx + 80, cy + 180], fill=(90, 110, 80), outline=(30, 30, 30), width=6)
         d.line([(cx - 80, cy + 10), (cx - 220, cy - 10)], fill=(120, 170, 100), width=26); d.line([(cx + 80, cy + 10), (cx + 220, cy - 10)], fill=(120, 170, 100), width=26)
         d.line([(cx - 260, cy - 260), (cx + 260, cy + 240)], fill=(220, 30, 30), width=36); d.line([(cx + 260, cy - 260), (cx - 260, cy + 240)], fill=(220, 30, 30), width=36)
+    if kind == "phone":                                      # smartphone in the hand, screen glowing
+        x, y = hand; ph = Image.new("RGBA", (W, H), (0, 0, 0, 0)); pd = ImageDraw.Draw(ph)
+        pd.rounded_rectangle([x - 55, y - 190, x + 55, y + 10], radius=18, fill=(25, 25, 30), outline=(10, 10, 10), width=5)
+        g = 0.75 + 0.25 * math.sin(t * 6); pd.rounded_rectangle([x - 45, y - 178, x + 45, y - 2], radius=10, fill=(int(90 * g), int(170 * g), int(255 * g)))
+        for k in range(4): pd.rounded_rectangle([x - 36, y - 165 + k * 40, x + 36, y - 140 + k * 40], radius=6, fill=(235, 245, 255))
+        im.paste(ph, (0, 0), ph)
+    if kind == "notif":                                      # red notification badges popping up
+        f = ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 64); r = np.random.default_rng(7)
+        for k in range(9):
+            if t < k * 0.12: break
+            x, y = int(r.integers(140, 940)), int(r.integers(180, 820)); s = min(1.0, (t - k * 0.12) / 0.1)
+            R = int(52 * (0.6 + 0.4 * s)); d.ellipse([x - R, y - R, x + R, y + R], fill=(235, 40, 45), outline=(255, 255, 255), width=6)
+            d.text((x, y), str(int(r.integers(1, 99))), font=f, anchor="mm", fill=(255, 255, 255))
     if kind == "book":
         x, y = hand; d.rectangle([x - 90, y - 140, x + 90, y + 20], fill=(150, 30, 40), outline=(30, 30, 30), width=6)
         d.text((x, y - 60), sh.get("book_text", "СОЗНАЮЩИЙ\nУМ"), font=ImageFont.truetype(f"{HERE}/../fonts/Oswald-Bold.ttf", 34), anchor="mm", fill=(250, 230, 160), align="center")
@@ -261,13 +280,13 @@ def frame(t):
         px, py = int(x - ci.width / 2), GROUND - ci.height + 20
         im.paste(ci, (px, py), ci); heads.append((x, py + hgt * 0.24, (px + ci.width * 0.5 + (0.5 if p.get("arm_r", 0) > 0 else -0.5) * ci.width * 0.6, py + hgt * 0.62)))
     if sh.get("bubble"): i, kind = sh["bubble"]; bubble(im, heads[i][0], heads[i][1], kind, t)
-    if sh.get("fx") in ("flame", "book"): gag(im, sh["fx"], heads[0][2] if heads else (540, 900), lt, sh)
+    if sh.get("fx") in ("flame", "book", "phone"): gag(im, sh["fx"], heads[0][2] if heads else (540, 900), lt, sh)
     # camera: push-in from zoom*0.94 to zoom over the shot, centred on (fx, fy)
     z0, fx, fy = sh["cam"]; z = max(1.0, z0 * (0.94 + 0.06 * min(1, lt / max(0.4, dur))))
     if sh.get("hook") and lt < 0.45: z *= 1.04; fx += math.sin(lt * 90) * 22 * (1 - lt / 0.45); fy += math.cos(lt * 77) * 22 * (1 - lt / 0.45)   # impact shake
     cw, ch = W / z, H / z; x0 = min(max(0, fx - cw / 2), W - cw); y0 = min(max(0, fy - ch / 2), H - ch)
     im = im.transform((W, H), Image.EXTENT, (x0, y0, x0 + cw, y0 + ch), Image.BICUBIC)
-    if sh.get("fx") in ("ouch", "nozombie", "money", "stamp", "calc"): gag(im, sh["fx"], None, lt, sh)     # screen space: never cropped by the camera
+    if sh.get("fx") in ("ouch", "nozombie", "money", "stamp", "calc", "notif"): gag(im, sh["fx"], None, lt, sh)     # screen space: never cropped by the camera
     if sh.get("sign"): sign(im, sh["sign"], lt)
     if sh.get("hook"): hook_title(im, sh["hook"], lt)
     if lt < 0.07: im = im.filter(ImageFilter.GaussianBlur(float(10 * (1 - lt / 0.07))))   # snap on the cut

@@ -20,7 +20,7 @@ SCENES = [
  (5, "Это оказался не священный текст, а список.", [
     dict(bg="office", cast=[("doctor", 540, dict(expr="smug", talk=True))], cam=(1.5, 540, 970), fx="book", book_text="СПИСОК")]),
  (6, "Шестьдесят с лишним тайников с золотом и серебром.", [
-    dict(bg="treasure", cast=[(G, 540, dict(expr="happy", arm_l=150, arm_r=150))], cam=(1.3, 540, 1050), sign="64 ТАЙНИКА", fx="money")]),
+    dict(bg="treasure", cast=[(G, 540, dict(expr="happy", arm_l=150, arm_r=150))], cam=(1.3, 540, 1050), sign="64 ТАЙНИКА")]),
  (7, "Если перевести древние меры, получаются тонны драгоценного металла.", [
     dict(bg="treasure", cast=[(G, 540, dict(expr="shock", sweat=True))], cam=(1.8, 540, 930), fx="calc", calc_lines=["ЗОЛОТО", "СЕРЕБРО", "= ТОННЫ?"])]),
  (8, "Описания такие: под ступенями, у гробницы, в цистерне.", [

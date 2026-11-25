@@ -9,7 +9,7 @@ ACCOUNT = "9e9c365e89bbbaf23301c89d3e97f7fa"      # Cloudflare account id (not a
 URL = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/ai/run/@cf/black-forest-labs/flux-1-schnell"
 STYLE = ", 3D animated feature film render, warm saturated cinematic light, strong perspective, rich detail, no people, no characters, no text, no letters"
 
-def gen(prompt, out, vertical=True, steps=8, seed=None, style=True):
+def gen(prompt, out, vertical=True, steps=8, seed=None, style=True, landscape=False):
     body = {"prompt": prompt + (STYLE if style else ""), "steps": steps}
     last = None
     for attempt in range(4):
@@ -20,6 +20,9 @@ def gen(prompt, out, vertical=True, steps=8, seed=None, style=True):
                 im = Image.open(io.BytesIO(base64.b64decode(d["result"]["image"]))).convert("RGB")
                 if vertical:   # 1024x1024 -> centre 576x1024 -> 1080x1920
                     w, h = im.size; cw = int(h * 9 / 16); im = im.crop(((w - cw) // 2, 0, (w - cw) // 2 + cw, h)).resize((1080, 1920), Image.LANCZOS)
+                    im = im.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
+                elif landscape:   # 1024x1024 -> centre 1024x576 -> 1920x1080
+                    w, h = im.size; chh = int(w * 9 / 16); im = im.crop((0, (h - chh) // 2, w, (h - chh) // 2 + chh)).resize((1920, 1080), Image.LANCZOS)
                     im = im.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
                 im.save(out, quality=93); return out
             last = d.get("errors")

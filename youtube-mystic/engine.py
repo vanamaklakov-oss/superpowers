@@ -538,6 +538,20 @@ def sc_banya(r, t):
     night(im, 150 - int(40 * fl))
     im.alpha_composite(fade(cached("bglow", lambda: glow_layer(240, 1370, 420, 340, (255, 140, 50), 150)).copy(), fl))
     if p.get("water"): wet(im, appear(t, wt(r, p["water"]), 4.0))
+    if p.get("steam") is not None:  # пар: белые размытые клубы, растут от слова steam
+        sa = appear(t, wt(r, p["steam"]), 1.2) * p.get("steam_k", 1.0); st = Image.new("RGBA", (W, H), (0, 0, 0, 0)); sd = ImageDraw.Draw(st)
+        for k in range(14):
+            cx = 240 + (k * 137) % 760 + 40 * math.sin(lt * 0.8 + k); cy = 1300 - (k * 97 + lt * 90 * (1 + k % 3)) % 1300; rr = 160 + (k % 4) * 60
+            sd.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=(235, 235, 240, int(110 * sa)))
+        im.alpha_composite(st.filter(ImageFilter.GaussianBlur(50)))
+        if p.get("face_in_steam"):
+            fa = appear(t, wt(r, p["face_in_steam"]), 1.5); fc = Image.new("RGBA", (W, H), (0, 0, 0, 0)); fd = ImageDraw.Draw(fc)
+            fd.ellipse([340, 520, 740, 980], fill=(60, 70, 80, int(120 * fa))); fd.ellipse([430, 690, 490, 740], fill=(10, 10, 14, int(220 * fa))); fd.ellipse([590, 690, 650, 740], fill=(10, 10, 14, int(220 * fa)))
+            fd.ellipse([500, 820, 580, 900], fill=(10, 10, 14, int(200 * fa))); im.alpha_composite(fc.filter(ImageFilter.GaussianBlur(10)))
+    if p.get("prints") is not None:
+        pa = appear(t, wt(r, p["prints"]), 2.0)
+        for k in range(int(6 * pa)):
+            x, y = 900 - k * 70, 1780 - k * 40 + (k % 2) * 30; d2 = ImageDraw.Draw(im); d2.ellipse([x, y, x + 44, y + 80], fill=(40, 60, 80, 200)); d2.ellipse([x + 4, y - 30, x + 40, y - 6], fill=(40, 60, 80, 200))
     rules_overlay(im, r, t)
     return zoom(im, 1.0 + 0.05 * lt / (r["t1"] - r["t0"]), 0.45, 0.7)
 

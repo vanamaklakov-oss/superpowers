@@ -23,7 +23,7 @@ def say(text, out):
             return ws
         try:
             ws = asyncio.run(go())
-            if ws and os.path.getsize(out) > 2000: time.sleep(2.5); return ws   # be gentle with the service
+            if ws and os.path.getsize(out) > 2000: time.sleep(6); return ws   # be gentle with the service
         except Exception as e: print("retry", r, p, file=sys.stderr); time.sleep(1.5)
     raise RuntimeError(f"tts failed: {text}")
 

@@ -1,0 +1,6 @@
+out/
+__pycache__/
+vo/*.p*.mp3
+bgs/
+bgs_land/
+thumbs/

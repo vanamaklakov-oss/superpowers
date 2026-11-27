@@ -16,7 +16,7 @@ def badge(d, x, y, r, n):
     d.ellipse([x - r, y - r, x + r, y + r], fill=(235, 40, 45), outline=(255, 255, 255), width=max(3, r // 8))
     d.text((x, y), str(n), font=ImageFont.truetype(FONT, int(r * 1.1)), anchor="mm", fill=(255, 255, 255))
 
-def make(bg, lines, out, char, expr="shock", side="right", accent=(255, 60, 50), badges=True, money=False):
+def make(bg, lines, out, char, expr="shock", side="right", accent=(255, 60, 50), badges=True, money=False, phone_on=True, sweat=True):
     im = Image.open(bg).convert("RGB").resize((TW, TH))
     im = ImageEnhance.Brightness(im.filter(ImageFilter.GaussianBlur(3))).enhance(0.55)
     v = Image.new("L", (TW, TH), 0); ImageDraw.Draw(v).ellipse([-200, -150, TW + 200, TH + 150], fill=255)
@@ -24,12 +24,12 @@ def make(bg, lines, out, char, expr="shock", side="right", accent=(255, 60, 50),
     cx = 880 if side == "right" else 330
     glow = Image.new("RGBA", (TW, TH), (0, 0, 0, 0)); ImageDraw.Draw(glow).ellipse([cx - 330, 60, cx + 330, 700], fill=accent + (120,))
     im.paste(glow.filter(ImageFilter.GaussianBlur(90)), (0, 0), glow.filter(ImageFilter.GaussianBlur(90)))
-    ch = draw(char, height=980, expr=expr, arm_r=60 if side == "right" else 0, arm_l=0 if side == "right" else 60, sweat=True)
+    ch = draw(char, height=980, expr=expr, arm_r=60 if side == "right" else 0, arm_l=0 if side == "right" else 60, sweat=sweat)
     px, py = int(cx - ch.width / 2), 150
     im.paste(ch, (px, py), ch); d = ImageDraw.Draw(im)
     hand = (px + ch.width * 0.5 + (0.3 if side == "right" else -0.3) * ch.width, py + 980 * 0.62)
-    phone(d, hand[0], hand[1] + 30, 1.1)
-    if badges:
+    if phone_on: phone(d, hand[0], hand[1] + 30, 1.1)
+    if badges and phone_on:
         for (dx, dy, r, n) in [(-70, -240, 46, 99), (40, -310, 38, 47), (95, -190, 32, 12)]: badge(d, hand[0] + dx, hand[1] + dy, r, n)
     if money:
         for k in range(10):
@@ -38,7 +38,7 @@ def make(bg, lines, out, char, expr="shock", side="right", accent=(255, 60, 50),
             b = b.rotate((k * 37) % 360, expand=True); im.paste(b, (int(x), int(y)), b)
     d = ImageDraw.Draw(im)
     tx = 60 if side == "right" else TW - 60; anchor = "lm" if side == "right" else "rm"
-    maxw = 700 if side == "right" else 620; y = TH / 2 - (len(lines) - 1) * 80
+    maxw = 620; y = TH / 2 - (len(lines) - 1) * 80
     for i, (text, col) in enumerate(lines):
         size = 170
         f = ImageFont.truetype(FONT, size)
